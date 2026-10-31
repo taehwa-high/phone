@@ -149,14 +149,14 @@ function phoneApp() {
     const c = DATA.calls[st.i];
     const act = [['msg', '메시지'], ['call', '통화'], ['video', '비디오'], ['mail', '메일']].map(([i, n]) => `<div>${sv(i)}${n}</div>`).join('');
     app.innerHTML = `${back('최근 기록', { i: null, t: null })}<div class="scr"><div class="cd">${avatar(c.name)}<h2>${esc(c.name)}</h2></div><div class="acts">${act}</div>
-      <div class="list"><div class="kv"><b>${esc(c.day)}</b><small>${c.time ? esc(c.time) + ' · ' : ''}${c.dir === 'out' ? '발신 전화' : '수신 전화'}${c.dur ? ' · ' + esc(c.dur) : ''}</small></div></div>
-      <div class="list" style="margin-top:14px"><button class="row" ${g({ t: st.t ? 0 : 1 })}><svg width="22" height="22" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="#0a84ff"/></svg><div class="rb"><b style="font-weight:500">통화 녹음</b></div></button>
-      ${st.t ? `<div class="kv" style="border-top:.5px solid var(--sep)">${c.rec ? c.rec.map((r) => `<small>${esc(r.who)}</small><b style="font-weight:400;margin-bottom:8px">${esc(r.text)}</b>`).join('') : '<small>재생할 수 없는 녹음입니다.</small>'}</div>` : ''}</div></div>`;
+      <div class="list"><div class="kv"><b>${esc(c.day)}</b><small>${c.time ? esc(c.time) + ' · ' : ''}${c.dir === 'out' ? '발신 전화' : c.dir === 'miss' ? '부재중 전화' : '수신 전화'}${c.dur ? ' · ' + esc(c.dur) : ''}</small></div></div>
+      ${c.dir === 'miss' ? '' : `<div class="list" style="margin-top:14px"><button class="row" ${g({ t: st.t ? 0 : 1 })}><svg width="22" height="22" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="#0a84ff"/></svg><div class="rb"><b style="font-weight:500">통화 녹음</b></div></button>
+      ${st.t ? `<div class="kv" style="border-top:.5px solid var(--sep)">${c.rec ? c.rec.map((r) => `<small>${esc(r.who)}</small><b style="font-weight:400;margin-bottom:8px">${esc(r.text)}</b>`).join('') : '<small>재생할 수 없는 녹음입니다.</small>'}</div>` : ''}</div>`}</div>`;
     return;
   }
   if (st.tab === 'recent') {
-    body = `<h1 class="lg">최근 기록</h1><div class="seg"><span class="on">전체</span><span>부재중</span></div><div class="list">${DATA.calls.map((c, i) => `
-      <button class="row" ${g({ i })}><div class="rb"><b>${esc(c.name)}</b><small>${c.dir === 'out' ? outArrow : ''}휴대전화</small></div><div class="rt">${esc(c.list)}<span class="info">i</span></div></button>`).join('')}</div>`;
+    body = `<h1 class="lg">최근 기록</h1><div class="seg"><button class="${st.f ? '' : 'on'}" ${g({ f: 0 })}>전체</button><button class="${st.f ? 'on' : ''}" ${g({ f: 1 })}>부재중</button></div><div class="list">${DATA.calls.map((c, i) => c.dir === 'miss' || !st.f ? `
+      <button class="row" ${g({ i })}><div class="rb"><b${c.dir === 'miss' ? ' style="color:#ff3b30"' : ''}>${esc(c.name)}</b><small>${c.dir === 'out' ? outArrow : ''}휴대전화</small></div><div class="rt">${esc(c.list)}<span class="info">i</span></div></button>` : '').join('')}</div>`;
   } else if (st.tab === 'contacts') {
     body = `<h1 class="lg">연락처</h1><div class="list">${sorted.map((n) => `<div class="row">${avatar(n)}<div class="rb"><b>${esc(n)}</b></div></div>`).join('')}</div>`;
   } else if (st.tab === 'keypad') {
