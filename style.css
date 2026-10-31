@@ -45,12 +45,12 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;paddin
 .pw-dots.shake{animation:shake .45s}
 @keyframes shake{20%,60%{transform:translateX(-12px)}40%,80%{transform:translateX(12px)}}
 .pw-text{display:block;margin:6px auto 0;width:260px;padding:10px 14px;border-radius:12px;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:18px;text-align:center;outline:none;user-select:text}
-.pw-pad{position:absolute;top:372px;left:0;right:0;display:grid;grid-template-columns:repeat(3,80px);gap:15px 22px;justify-content:center}
+.pw-pad{position:absolute;top:318px;left:0;right:0;display:grid;grid-template-columns:repeat(3,80px);gap:15px 22px;justify-content:center}
 .fade{animation:fade .4s ease both}@keyframes fade{from{opacity:0}to{opacity:1}}
 .pw-pad button{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.17);font-size:36px;font-weight:400;color:#fff;transition:background .15s}
 .pw-pad button:active{background:rgba(255,255,255,.42)}
 .pw-pad .ok{font-size:18px}
-.pw-foot{position:absolute;left:0;right:0;bottom:46px;display:flex;justify-content:space-between;padding:0 54px;font-size:17px}.pw-foot span{opacity:.9}
+.pw-foot{position:absolute;left:0;right:0;bottom:62px;display:flex;justify-content:space-between;padding:0 54px;font-size:17px}.pw-foot span{opacity:.9}
 
 /* 홈 화면 */
 #home{opacity:1}
@@ -136,7 +136,7 @@ h1.lg{font-size:34px;font-weight:700;padding:10px 20px 8px;letter-spacing:-.5px}
 #app.cal{background:#fff}
 .cal{padding:0 12px}.wk,.cg{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
 .wk span{font-size:12px;color:var(--gray);padding:6px 0}.wk span:first-child{color:#ff3b30}
-.cg span{height:54px;border-top:.5px solid var(--sep);padding-top:6px}.cg i{font-style:normal;font-size:18px;display:inline-grid;place-items:center;width:32px;height:32px;border-radius:50%}
+.cg span{}.cg i{font-style:normal;font-size:18px;display:inline-grid;place-items:center;width:32px;height:32px;border-radius:50%}
 .cg span:nth-child(7n+1){color:#ff3b30}.cg .today i{background:#ff3b30;color:#fff}
 
 #app{z-index:3}
@@ -153,3 +153,11 @@ h1.lg{font-size:34px;font-weight:700;padding:10px 20px 8px;letter-spacing:-.5px}
 .pgrid img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .viewer .vp{background:#fff;inset:100px 0 160px}.viewer .vp img{width:100%;height:100%;object-fit:contain}
 .vcap{line-height:1.5;bottom:84px}.vcap b{color:#000;font-weight:600}
+
+.cg>*{height:54px;border-top:.5px solid var(--sep);padding-top:6px;position:relative}
+.cg button{font:inherit;color:inherit}.cg button:nth-child(7n+1){color:#ff3b30}
+.cg button i{font-style:normal;font-size:18px;display:inline-grid;place-items:center;width:32px;height:32px;border-radius:50%}
+.cg .today i{background:#ff3b30;color:#fff}.cg .sel:not(.today) i{background:#e5e5ea}
+.cg u{position:absolute;left:50%;bottom:6px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#8a8a8e}
+.cg span{height:54px}
+.vbar svg{width:26px;height:26px;fill:#0a84ff}

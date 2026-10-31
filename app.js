@@ -190,28 +190,30 @@ function msgApp() {
 /* ---- 사진 ---- */
 function photosApp() {
   const tabs = [['lib', '보관함', 'photo'], ['col', '컬렉션', 'folder']];
-  const n = DATA.trash.length;
+  const P = DATA.photos, img = (p) => `<img src="${p.img}">`;
   if (st.v != null) {
-    app.innerHTML = `${back('최근 삭제', { v: null })}<div class="viewer"><div class="vp">${DATA.trash[st.v].img ? `<img src="${DATA.trash[st.v].img}">` : '<div class="pic"></div>'}</div><div class="vcap"><b>${esc(DATA.trash[st.v].taken || '')}</b><br>${esc(DATA.trash[st.v].deleted)}</div><div class="vbar"><span>복구</span><span>삭제</span></div></div>`;
+    app.innerHTML = `${back('보관함', { v: null })}<div class="viewer"><div class="vp">${img(P[st.v])}</div><div class="vcap"><b>${esc(P[st.v].taken)}</b></div><div class="vbar"><span>${sv('photo')}</span><span>${sv('trash')}</span></div></div>`;
     return;
   }
   if (st.tab === 'trash') {
-    app.innerHTML = `${back('컬렉션', { tab: 'col' })}<div class="scr"><h1 class="lg" style="padding-top:44px">최근 삭제</h1><div class="pgrid">${DATA.trash.map((_, i) => `<button ${g({ v: i })}>${DATA.trash[i].img ? `<img src="${DATA.trash[i].img}">` : '<div class="pic"></div>'}<span class="days">30일</span></button>`).join('')}</div>
+    app.innerHTML = `${back('컬렉션', { tab: 'col' })}<div class="scr"><h1 class="lg" style="padding-top:44px">최근 삭제</h1><div class="empty" style="padding:60px 40px 20px">항목 없음</div>
       <div class="note">사진 및 비디오는 30일 동안 이곳에 보관된 후 영구적으로 삭제됩니다.</div></div>`;
     return;
   }
   const body = st.tab === 'col'
-    ? `<h1 class="lg">컬렉션</h1><div class="hdr">유틸리티</div><div class="list"><button class="alb" ${g({ tab: 'trash' })}>${sv('trash')}최근 삭제<em>${n}</em></button></div>`
-    : `<h1 class="lg">보관함</h1><div class="empty">사진 또는 비디오 없음<small>iPhone으로 사진과 비디오를 찍으면 여기에 표시됩니다.</small></div>`;
+    ? `<h1 class="lg">컬렉션</h1><div class="hdr">유틸리티</div><div class="list"><button class="alb" ${g({ tab: 'trash' })}>${sv('trash')}최근 삭제<em>0</em></button></div>`
+    : `<h1 class="lg">보관함</h1><div class="pgrid">${P.map((p, i) => `<button ${g({ v: i })}>${img(p)}</button>`).join('')}</div><div class="note">사진 ${P.length}장</div>`;
   app.innerHTML = `<div class="scr">${body}</div>${tabbar(tabs, st.tab)}`;
 }
 
 /* ---- 캘린더 ---- */
 function calApp() {
-  const Y = 2033, M = 9, first = new Date(Y, M, 1).getDay(), n = new Date(Y, M + 1, 0).getDate();
-  const cells = Array.from({ length: first }, () => '<span></span>').concat(Array.from({ length: n }, (_, i) => `<span class="${i + 1 === 31 ? 'today' : ''}"><i>${i + 1}</i></span>`));
+  const d = st.d || 31, Y = 2033, M = 9, first = new Date(Y, M, 1).getDay(), n = new Date(Y, M + 1, 0).getDate();
+  const has = (k) => DATA.events.some((e) => e.day === k);
+  const cells = Array.from({ length: first }, () => '<span></span>').concat(Array.from({ length: n }, (_, i) => `<button class="${i + 1 === 31 ? 'today' : ''} ${i + 1 === d ? 'sel' : ''}" ${g({ d: i + 1 })}><i>${i + 1}</i>${has(i + 1) ? '<u></u>' : ''}</button>`));
+  const evs = DATA.events.filter((e) => e.day === d);
   app.innerHTML = `<div class="scr"><h1 class="lg">2033년 10월</h1><div class="cal"><div class="wk">${['일', '월', '화', '수', '목', '금', '토'].map((w) => `<span>${w}</span>`).join('')}</div><div class="cg">${cells.join('')}</div></div>
-    <div class="note">${DATA.events.length ? '' : '일정 없음'}</div></div>`;
+    <div class="hdr">10월 ${d}일</div><div class="list">${evs.length ? evs.map((e) => `<div class="row"><div class="rb"><b>${esc(e.title)}</b><small>${esc(e.time)}</small></div></div>`).join('') : '<div class="row"><div class="rb"><small>일정 없음</small></div></div>'}</div></div>`;
 }
 
 /* ---- 시작 ---- */
