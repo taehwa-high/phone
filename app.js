@@ -208,12 +208,13 @@ function photosApp() {
 
 /* ---- 캘린더 ---- */
 function calApp() {
-  const d = st.d || 31, Y = 2033, M = 9, first = new Date(Y, M, 1).getDay(), n = new Date(Y, M + 1, 0).getDate();
-  const has = (k) => DATA.events.some((e) => e.day === k);
-  const cells = Array.from({ length: first }, () => '<span></span>').concat(Array.from({ length: n }, (_, i) => `<button class="${i + 1 === 31 ? 'today' : ''} ${i + 1 === d ? 'sel' : ''}" ${g({ d: i + 1 })}><i>${i + 1}</i>${has(i + 1) ? '<u></u>' : ''}</button>`));
-  const evs = DATA.events.filter((e) => e.day === d);
-  app.innerHTML = `<div class="scr"><h1 class="lg">2033년 10월</h1><div class="cal"><div class="wk">${['일', '월', '화', '수', '목', '금', '토'].map((w) => `<span>${w}</span>`).join('')}</div><div class="cg">${cells.join('')}</div></div>
-    <div class="hdr">10월 ${d}일</div><div class="list">${evs.length ? evs.map((e) => `<div class="row"><div class="rb"><b>${esc(e.title)}</b><small>${esc(e.time)}</small></div></div>`).join('') : '<div class="row"><div class="rb"><small>일정 없음</small></div></div>'}</div></div>`;
+  const Y = 2033, mo = st.mo || 10, d = st.d || (mo === 10 ? 31 : 1), first = new Date(Y, mo - 1, 1).getDay(), n = new Date(Y, mo, 0).getDate();
+  const E = DATA.events.filter((e) => e.m === mo), has = (k) => E.some((e) => e.day === k);
+  const cells = Array.from({ length: first }, () => '<span></span>').concat(Array.from({ length: n }, (_, i) => `<button class="${mo === 10 && i + 1 === 31 ? 'today' : ''} ${i + 1 === d ? 'sel' : ''}" ${g({ d: i + 1 })}><i>${i + 1}</i>${has(i + 1) ? '<u></u>' : ''}</button>`));
+  while (cells.length % 7) cells.push('<span></span>');
+  const evs = E.filter((e) => e.day === d);
+  app.innerHTML = `<div class="scr"><div class="mh"><h1 class="lg">${Y}년 ${mo}월</h1><button ${g({ mo: mo - 1 || 12, d: 1 })}>‹</button><button ${g({ mo: mo === 12 ? 1 : mo + 1, d: 1 })}>›</button></div><div class="cal"><div class="wk">${['일', '월', '화', '수', '목', '금', '토'].map((w) => `<span>${w}</span>`).join('')}</div><div class="cg">${cells.join('')}</div></div>
+    <div class="hdr">${mo}월 ${d}일</div><div class="list">${evs.length ? evs.map((e) => `<div class="row"><div class="rb"><b>${esc(e.title)}</b><small>${esc(e.time)}</small></div></div>`).join('') : '<div class="row"><div class="rb"><small>일정 없음</small></div></div>'}</div></div>`;
 }
 
 /* ---- 시작 ---- */

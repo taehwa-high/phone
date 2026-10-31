@@ -165,3 +165,6 @@ h1.lg{font-size:34px;font-weight:700;padding:10px 20px 8px;letter-spacing:-.5px}
 .seg button{flex:1;padding:6px 0;border-radius:8px;font-size:13px;font-weight:600}.seg button.on{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 
 .thread .nav{top:58px}
+
+.mh{display:flex;align-items:center;padding-right:14px}.mh h1{flex:1}.mh button{font-size:34px;color:#ff3b30;width:40px;line-height:1}
+.cg span{border-top:.5px solid var(--sep);height:54px}
