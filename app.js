@@ -192,11 +192,11 @@ function photosApp() {
   const tabs = [['lib', '보관함', 'photo'], ['col', '컬렉션', 'folder']];
   const n = DATA.trash.length;
   if (st.v != null) {
-    app.innerHTML = `${back('최근 삭제', { v: null })}<div class="viewer"><div class="vp"><div class="pic"></div></div><div class="vcap">${esc(DATA.trash[st.v].deleted)}</div><div class="vbar"><span>복구</span><span>삭제</span></div></div>`;
+    app.innerHTML = `${back('최근 삭제', { v: null })}<div class="viewer"><div class="vp">${DATA.trash[st.v].img ? `<img src="${DATA.trash[st.v].img}">` : '<div class="pic"></div>'}</div><div class="vcap"><b>${esc(DATA.trash[st.v].taken || '')}</b><br>${esc(DATA.trash[st.v].deleted)}</div><div class="vbar"><span>복구</span><span>삭제</span></div></div>`;
     return;
   }
   if (st.tab === 'trash') {
-    app.innerHTML = `${back('컬렉션', { tab: 'col' })}<div class="scr"><h1 class="lg">최근 삭제</h1><div class="pgrid">${DATA.trash.map((_, i) => `<button ${g({ v: i })}><div class="pic"></div><span class="days">30일</span></button>`).join('')}</div>
+    app.innerHTML = `${back('컬렉션', { tab: 'col' })}<div class="scr"><h1 class="lg" style="padding-top:44px">최근 삭제</h1><div class="pgrid">${DATA.trash.map((_, i) => `<button ${g({ v: i })}>${DATA.trash[i].img ? `<img src="${DATA.trash[i].img}">` : '<div class="pic"></div>'}<span class="days">30일</span></button>`).join('')}</div>
       <div class="note">사진 및 비디오는 30일 동안 이곳에 보관된 후 영구적으로 삭제됩니다.</div></div>`;
     return;
   }
