@@ -81,12 +81,13 @@ const ICON = {
 const icon = (k) => `<svg viewBox="0 0 60 60">${ICON[k]}</svg>`;
 
 /* ---- 홈 화면 ---- */
-const APPS = [['cal', '캘린더'], ['photos', '사진', 'photos'], ['clock', '시계'], ['maps', '지도'], ['weather', '날씨'], ['notes', '메모'], ['settings', '설정']];
-const DOCK = [['phone', '전화', 'phone'], ['web', '인터넷'], ['msg', '메시지', 'msg'], ['camera', '카메라']];
+const APPS = [['cal', '캘린더', 'cal'], ['photos', '사진', 'photos']];
+const DOCK = [['phone', '전화', 'phone'], ['msg', '메시지', 'msg']];
 const tile = ([k, n, open]) => `<button class="ap" ${open ? `data-open="${open}"` : ''} aria-label="${n}">${icon(k)}<span>${n}</span></button>`;
-function goHome() {
+function goHome(toCam = true) {
   show('home');
   home.innerHTML = `<div class="grid">${APPS.map(tile).join('')}</div><div class="dots"><i></i><i></i></div><div class="dock">${DOCK.map(tile).join('')}</div>`;
+  if (toCam) openCam(); // 잠금 해제 직후엔 카메라가 켜져 있던 상태
 }
 home.onclick = (e) => { const b = e.target.closest('[data-open]'); if (b) openApp(b.dataset.open); };
 
@@ -99,7 +100,14 @@ function openApp(name) {
   render();
   requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('pre')));
 }
-function closeApp() { app.classList.add('hidden'); screen.classList.remove('dark'); app.innerHTML = ''; }
+function openCam() {
+  st = { name: 'cam' }; app.className = 'layer cam';
+  app.innerHTML = `<div class="vf"></div><div class="cm-top"><span>⚡︎</span><span>⌃</span><span>◎</span></div>
+    <div class="cm-zoom"><b>.5</b><b class="on">1×</b><b>2</b></div>
+    <div class="cm-modes"><span>비디오</span><span class="on">사진</span><span>인물 사진</span></div>
+    <div class="cm-bar"><i class="th"></i><i class="sh"></i><i class="fl">⟲</i></div>`;
+}
+function closeApp() { if (st.name === 'cam') { app.classList.add('hidden'); app.innerHTML = ''; return; } app.classList.add('hidden'); screen.classList.remove('dark'); app.innerHTML = ''; }
 function go(patch) { Object.assign(st, patch); render(); }
 app.onclick = (e) => {
   const t = e.target.closest('[data-go]'); if (!t) return;
@@ -109,7 +117,7 @@ app.onclick = (e) => {
 const g = (o) => `data-go='${JSON.stringify(o)}'`;
 const back = (label, o) => `<div class="nav"><button class="back" ${g(o)}><svg width="12" height="20" viewBox="0 0 12 20"><path d="M10 2L2 10l8 8" stroke="#0a84ff" stroke-width="2.600" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>${label}</button></div>`;
 const avatar = (n) => `<div class="av">${esc(n.trim()[0])}</div>`;
-function render() { ({ phone: phoneApp, msg: msgApp, photos: photosApp })[st.name](); }
+function render() { ({ phone: phoneApp, msg: msgApp, photos: photosApp, cal: calApp })[st.name](); }
 
 /* ---- 전화 ---- */
 const SVG = {
@@ -137,8 +145,10 @@ function phoneApp() {
   if (st.i != null) {
     const c = DATA.calls[st.i];
     const act = [['msg', '메시지'], ['call', '통화'], ['video', '비디오'], ['mail', '메일']].map(([i, n]) => `<div>${sv(i)}${n}</div>`).join('');
-    app.innerHTML = `${back('최근 기록', { i: null })}<div class="scr"><div class="cd">${avatar(c.name)}<h2>${esc(c.name)}</h2></div><div class="acts">${act}</div>
-      <div class="list"><div class="kv"><b>${esc(c.day)}</b><small>${c.time ? esc(c.time) + ' · ' : ''}${c.dir === 'out' ? '발신 전화' : '수신 전화'}${c.dur ? ' · ' + esc(c.dur) : ''}</small></div></div></div>`;
+    app.innerHTML = `${back('최근 기록', { i: null, t: null })}<div class="scr"><div class="cd">${avatar(c.name)}<h2>${esc(c.name)}</h2></div><div class="acts">${act}</div>
+      <div class="list"><div class="kv"><b>${esc(c.day)}</b><small>${c.time ? esc(c.time) + ' · ' : ''}${c.dir === 'out' ? '발신 전화' : '수신 전화'}${c.dur ? ' · ' + esc(c.dur) : ''}</small></div></div>
+      <div class="list" style="margin-top:14px"><button class="row" ${g({ t: st.t ? 0 : 1 })}><svg width="22" height="22" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="#0a84ff"/></svg><div class="rb"><b style="font-weight:500">통화 녹음</b></div></button>
+      ${st.t ? `<div class="kv" style="border-top:.5px solid var(--sep)">${c.rec ? c.rec.map((r) => `<small>${esc(r.who)}</small><b style="font-weight:400;margin-bottom:8px">${esc(r.text)}</b>`).join('') : '<small>재생할 수 없는 녹음입니다.</small>'}</div>` : ''}</div></div>`;
     return;
   }
   if (st.tab === 'recent') {
@@ -191,6 +201,14 @@ function photosApp() {
     ? `<h1 class="lg">컬렉션</h1><div class="hdr">유틸리티</div><div class="list"><button class="alb" ${g({ tab: 'trash' })}>${sv('trash')}최근 삭제<em>${n}</em></button></div>`
     : `<h1 class="lg">보관함</h1><div class="empty">사진 또는 비디오 없음<small>iPhone으로 사진과 비디오를 찍으면 여기에 표시됩니다.</small></div>`;
   app.innerHTML = `<div class="scr">${body}</div>${tabbar(tabs, st.tab)}`;
+}
+
+/* ---- 캘린더 ---- */
+function calApp() {
+  const Y = 2033, M = 9, first = new Date(Y, M, 1).getDay(), n = new Date(Y, M + 1, 0).getDate();
+  const cells = Array.from({ length: first }, () => '<span></span>').concat(Array.from({ length: n }, (_, i) => `<span class="${i + 1 === 31 ? 'today' : ''}"><i>${i + 1}</i></span>`));
+  app.innerHTML = `<div class="scr"><h1 class="lg">2033년 10월</h1><div class="cal"><div class="wk">${['일', '월', '화', '수', '목', '금', '토'].map((w) => `<span>${w}</span>`).join('')}</div><div class="cg">${cells.join('')}</div></div>
+    <div class="note">${DATA.events.length ? '' : '일정 없음'}</div></div>`;
 }
 
 /* ---- 시작 ---- */
