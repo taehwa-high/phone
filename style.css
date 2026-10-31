@@ -45,11 +45,12 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;paddin
 .pw-dots.shake{animation:shake .45s}
 @keyframes shake{20%,60%{transform:translateX(-12px)}40%,80%{transform:translateX(12px)}}
 .pw-text{display:block;margin:6px auto 0;width:260px;padding:10px 14px;border-radius:12px;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:18px;text-align:center;outline:none;user-select:text}
-.pw-pad{display:grid;grid-template-columns:repeat(3,80px);gap:16px 22px;justify-content:center;margin-top:44px}
+.pw-pad{position:absolute;top:372px;left:0;right:0;display:grid;grid-template-columns:repeat(3,80px);gap:15px 22px;justify-content:center}
+.fade{animation:fade .4s ease both}@keyframes fade{from{opacity:0}to{opacity:1}}
 .pw-pad button{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.17);font-size:36px;font-weight:400;color:#fff;transition:background .15s}
 .pw-pad button:active{background:rgba(255,255,255,.42)}
 .pw-pad .ok{font-size:18px}
-.pw-foot{position:absolute;left:0;right:0;bottom:40px;display:flex;justify-content:space-between;padding:0 54px;font-size:17px}.pw-foot span{opacity:.9}
+.pw-foot{position:absolute;left:0;right:0;bottom:46px;display:flex;justify-content:space-between;padding:0 54px;font-size:17px}.pw-foot span{opacity:.9}
 
 /* 홈 화면 */
 #home{opacity:1}

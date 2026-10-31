@@ -10,8 +10,13 @@ const fit = () => document.getElementById('phone').style.setProperty('--s', Math
 addEventListener('resize', fit); fit();
 
 /* ---- 화면 전환 ---- */
+let cur;
 function show(name) {
-  for (const [id, el] of [['lock', lock], ['pass', pass], ['home', home]]) el.classList.toggle('hidden', id !== name);
+  cur = name;
+  for (const [id, el] of [['lock', lock], ['pass', pass], ['home', home]]) {
+    if (id === name) { el.classList.remove('hidden', 'fade'); void el.offsetWidth; el.classList.add('fade'); el.style.zIndex = 2; }
+    else { el.style.zIndex = 1; setTimeout(() => { if (cur !== id) el.classList.add('hidden'); }, 400); } // 새 화면이 페이드로 덮인 뒤 이전 화면 숨김
+  }
   app.classList.add('hidden'); app.className = 'layer hidden';
   screen.className = name === 'lock' ? 'st-lock' : '';
 }
@@ -32,6 +37,7 @@ document.addEventListener('keydown', (e) => {
 /* ---- 암호 ---- */
 function openPass() {
   code = ''; drawDots(); show('pass');
+  $('#pwPad').classList.toggle('hidden', !ENC.len); $('#pwText').classList.toggle('hidden', !!ENC.len);
   if (!ENC.len) { $('#pwText').value = ''; $('#pwText').focus(); }
 }
 function drawDots() {
