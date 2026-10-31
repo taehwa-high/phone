@@ -53,8 +53,11 @@ async function attempt(c) {
     const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64(ENC.salt), iterations: ENC.iter, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
     const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(ENC.iv) }, key, b64(ENC.ct));
     DATA = JSON.parse(new TextDecoder().decode(pt));
-    goHome();
   } catch {
+    DATA = null;
+  }
+  if (DATA) return goHome();
+  {
     const d = $('#pwDots'); d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake');
     code = ''; setTimeout(drawDots, 450);
     if (!ENC.len) $('#pwText').value = '';
@@ -212,4 +215,4 @@ function calApp() {
 }
 
 /* ---- 시작 ---- */
-fetch('data.enc.json').then((r) => r.json()).then((j) => { ENC = j; show('lock'); });
+fetch('data.enc.json', { cache: 'no-store' }).then((r) => r.json()).then((j) => { ENC = j; show('lock'); });
