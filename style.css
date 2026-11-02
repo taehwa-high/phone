@@ -168,3 +168,30 @@ h1.lg{font-size:34px;font-weight:700;padding:10px 20px 8px;letter-spacing:-.5px}
 
 .mh{display:flex;align-items:center;padding-right:14px}.mh h1{flex:1}.mh button{font-size:34px;color:#ff3b30;width:40px;line-height:1}
 .cg span{border-top:.5px solid var(--sep);height:54px}
+
+/* 실제 폰처럼 반응 (2026-11-02) */
+.cm-zoom button{width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:12px;font-weight:600;transition:all .15s}.cm-zoom button.on{color:#ffd60a;width:40px;height:40px}
+.cm-modes button{color:#fff;font-size:15px;font-weight:600;opacity:.75}.cm-modes button.on{color:#ffd60a;opacity:1}
+.cm-bar .sh{transition:transform .1s}.cm-bar .sh:active{transform:scale(.9)}.cm-bar .sh.rec{background:#ff3b30}
+.cm-bar .th.shot{background:linear-gradient(135deg,#2b2b30,#55555c)}
+.vf.snap{animation:snap .35s}@keyframes snap{0%{background:#fff}100%{background:#050505}}
+.vf.flip{animation:flipc .45s}@keyframes flipc{50%{transform:rotateY(90deg);opacity:.3}}
+.acts button{flex:1;background:#fff;border-radius:14px;padding:10px 0 8px;color:var(--blue);font-size:11.500px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.acts button:active{background:#e5e5ea}.acts button.off{color:#c7c7cc;cursor:default}
+.row:active,.alb:active{background:#e5e5ea}
+.kp-act{display:grid;grid-template-columns:repeat(3,80px);gap:22px;justify-content:center;align-items:center;margin-top:16px}
+.kp-act .call{margin:0}.kdel{font-size:26px;color:#8a8a8e}
+.calling{position:absolute;inset:0;background:linear-gradient(#3a3d4a,#1c1d24);color:#fff;text-align:center;padding-top:130px}
+.calling h2{font-size:34px;font-weight:500}.calling p{font-size:17px;opacity:.7;margin-top:6px}.calling small{display:block;font-size:14px;opacity:.55;margin-top:10px}
+.cbtns{position:absolute;bottom:90px;left:0;right:0;display:flex;justify-content:center;gap:70px}
+.cbtns button{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px}
+.cbtns i{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;font-style:normal;font-size:26px}
+.cbtns i svg{width:32px;height:32px;fill:#fff}.cbtns i.r{background:#ff3b30}.cbtns i.r svg{transform:rotate(135deg)}.cbtns i.g{background:#34c759}
+.compose i{display:grid;place-items:center;font-style:normal;font-size:24px;color:#6b6b70}
+.compose input{flex:1;height:44px;border-radius:22px;padding:0 50px 0 16px;border:0;outline:0;font:inherit;font-size:17px;color:#000;user-select:text}
+.compose .snd{position:absolute;right:4px;width:36px;height:36px;border-radius:50%;background:#34c759;color:#fff;font-size:20px;font-weight:700}
+.compose input:placeholder-shown+.snd{display:none}
+.fail{width:20px;height:20px;border-radius:50%;background:#ff3b30;color:#fff;font-style:normal;font-size:13px;font-weight:700;display:grid;place-items:center;flex:none}
+.failtxt{text-align:right;font-size:11px;color:#ff3b30;margin:0 30px 6px 0}
+.vp img{transition:transform .25s}.vp.zoom img{transform:scale(2.2)}
+.vcnt{font-size:13px;color:var(--gray);align-self:center}

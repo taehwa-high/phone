@@ -24,10 +24,22 @@ function relock() { DATA = null; app.innerHTML = ''; code = ''; show('lock'); }
 $('#power').onclick = relock;
 
 /* ---- 잠금 화면: 탭 또는 위로 쓸기 ---- */
-lock.onpointerup = () => openPass();
+let y0 = null;
+lock.onpointerdown = (e) => { y0 = e.clientY; lock.style.transition = 'none'; };
+lock.onpointermove = (e) => { if (y0 == null) return; const dy = Math.min(0, e.clientY - y0); lock.style.transform = `translateY(${dy}px)`; lock.style.opacity = 1 + dy / 400; };
+lock.onpointerup = (e) => {
+  const dy = y0 == null ? 0 : e.clientY - y0; y0 = null;
+  lock.style.transition = 'transform .25s,opacity .25s'; lock.style.transform = ''; lock.style.opacity = '';
+  if (dy < -50 || Math.abs(dy) < 8) openPass(); // 위로 쓸거나 탭하면 열림, 아래로 끌면 제자리
+};
+/* ---- 시계: 8:00부터 실제로 흐름 ---- */
+const T0 = Date.now();
+const clock = () => { const m = 480 + Math.floor((Date.now() - T0) / 60000); const t = `${Math.floor(m / 60) % 12 || 12}:${String(m % 60).padStart(2, '0')}`; $('#sl').textContent = t; $('.lk-time').textContent = t; };
+setInterval(clock, 5000);
 $('#hind').onclick = () => { if (!app.classList.contains('hidden')) closeApp(); else if (!lock.classList.contains('hidden')) openPass(); };
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !app.classList.contains('hidden')) return closeApp();
+  if (st.name === 'photos' && st.v != null && /^Arrow(Left|Right)$/.test(e.key)) return flip(e.key === 'ArrowRight' ? 1 : -1);
   if (pass.classList.contains('hidden')) return;
   if (ENC.len && /^\d$/.test(e.key)) press(e.key);
   else if (e.key === 'Backspace' && ENC.len) del();
@@ -106,17 +118,43 @@ function openApp(name) {
 function openCam() {
   st = { name: 'cam' }; app.className = 'layer cam';
   app.innerHTML = `<div class="vf"></div><div class="cm-top"><span>⚡︎</span><span>⌃</span><span>◎</span></div>
-    <div class="cm-zoom"><b>.5</b><b class="on">1×</b><b>2</b></div>
-    <div class="cm-modes"><span>비디오</span><span class="on">사진</span><span>인물 사진</span></div>
-    <div class="cm-bar"><i class="th"></i><i class="sh"></i><i class="fl">⟲</i></div>`;
+    <div class="cm-zoom">${['.5', '1×', '2'].map((z, i) => `<button data-cam="zoom" class="${i === 1 ? 'on' : ''}">${z}</button>`).join('')}</div>
+    <div class="cm-modes">${['비디오', '사진', '인물 사진'].map((m) => `<button data-cam="mode" class="${m === '사진' ? 'on' : ''}">${m}</button>`).join('')}</div>
+    <div class="cm-bar"><button class="th" data-cam="th" aria-label="최근 사진"></button><button class="sh" data-cam="sh" aria-label="촬영"></button><button class="fl" data-cam="fl" aria-label="카메라 전환">⟲</button></div>`;
 }
-function closeApp() { if (st.name === 'cam') { app.classList.add('hidden'); app.innerHTML = ''; return; } app.classList.add('hidden'); screen.classList.remove('dark'); app.innerHTML = ''; }
+function camTap(b) {
+  const k = b.dataset.cam;
+  if (k === 'zoom' || k === 'mode') { b.parentNode.querySelector('.on').classList.remove('on'); b.classList.add('on'); }
+  if (k === 'mode') $('.cm-bar .sh').classList.toggle('rec', b.textContent === '비디오');
+  if (k === 'fl') { const v = $('.vf'); v.classList.remove('flip'); void v.offsetWidth; v.classList.add('flip'); }
+  if (k === 'sh') { const v = $('.vf'); v.classList.remove('snap'); void v.offsetWidth; v.classList.add('snap'); $('.cm-bar .th').classList.add('shot'); } // 찍은 사진은 사진첩에 넣지 않음(증거 사진만 유지)
+  if (k === 'th') openApp('photos');
+}
+function closeApp() {
+  clearTimeout(callT); const was = st.name; st = {};
+  app.classList.add('pre'); screen.classList.remove('dark');
+  setTimeout(() => { if (st.name) return; app.classList.add('hidden'); app.innerHTML = ''; }, was === 'cam' ? 0 : 250); // 닫히는 사이 다른 앱을 열었으면 그대로 둠
+}
 function go(patch) { Object.assign(st, patch); render(); }
 app.onclick = (e) => {
+  const c = e.target.closest('[data-cam]'); if (c) return camTap(c);
+  const d = e.target.closest('[data-do]'); if (d) return doAct(d.dataset.do, d.dataset.n);
   const t = e.target.closest('[data-go]'); if (!t) return;
   const patch = JSON.parse(t.dataset.go);
   go(patch);
 };
+// 연락처·통화 기록의 메시지 버튼 → 그 사람과의 대화방(없으면 새 대화)
+function doAct(k, n) {
+  if (k === 'msg') { const i = DATA.threads.findIndex((t) => t.name === n); openApp('msg'); go(i >= 0 ? { i } : { i: -1, nn: n }); }
+}
+app.onsubmit = (e) => {
+  e.preventDefault(); const inp = e.target.querySelector('input'), text = inp.value.trim(); if (!text) return;
+  if (st.i === -1) { DATA.threads.unshift({ name: st.nn, list: '', msgs: [] }); st.i = 0; }
+  const t = DATA.threads[st.i], now = $('#sl').textContent;
+  t.msgs.push({ from: 'me', day: '오늘', text, time: `오전 ${now}`, fail: 1 }); t.list = `오전 ${now}`; // 서비스 없음 → 전송 실패. 잠그거나 새로고침하면 사라짐
+  render(); $('.compose input').focus();
+};
+let callT;
 const g = (o) => `data-go='${JSON.stringify(o)}'`;
 const back = (label, o) => `<div class="nav"><button class="back" ${g(o)}><svg width="12" height="20" viewBox="0 0 12 20"><path d="M10 2L2 10l8 8" stroke="#0a84ff" stroke-width="2.600" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>${label}</button></div>`;
 const avatar = (n) => `<div class="av">${esc(n.trim()[0])}</div>`;
@@ -144,12 +182,30 @@ const outArrow = '<svg width="13" height="13" viewBox="0 0 24 24"><path d="M7 17
 function phoneApp() {
   const tabs = [['fav', '즐겨찾기', 'star'], ['recent', '최근 기록', 'clock'], ['contacts', '연락처', 'person'], ['keypad', '키패드', 'keypad'], ['vm', '음성 사서함', 'vm']];
   const sorted = [...DATA.contacts].sort((a, b) => a.localeCompare(b, 'ko'));
+  screen.classList.toggle('dark', !st.calling);
   let body;
+  if (st.calling) {
+    const fail = st.cs === 'fail';
+    app.innerHTML = `<div class="calling"><h2>${esc(st.calling)}</h2><p>${fail ? '통화 실패' : '휴대전화 연결 중…'}</p>${fail ? '<small>셀룰러 서비스를 사용할 수 없습니다</small>' : ''}
+      <div class="cbtns">${fail ? `<button ${g({ calling: null, cs: null })}><i>✕</i>취소</button><button ${g({ cs: null, calling: st.calling })}><i class="g">${sv('call')}</i>다시 걸기</button>`
+        : `<button ${g({ calling: null })}><i class="r">${sv('call')}</i>종료</button>`}</div></div>`;
+    clearTimeout(callT);
+    if (!fail) callT = setTimeout(() => { if (st.calling) go({ cs: 'fail' }); }, 2200);
+    return;
+  }
+  clearTimeout(callT);
+  const acts = (n) => `<div class="acts"><button data-do="msg" data-n="${esc(n)}">${sv('msg')}메시지</button><button ${g({ calling: n })}>${sv('call')}통화</button><button ${g({ calling: n })}>${sv('video')}비디오</button><button class="off">${sv('mail')}메일</button></div>`;
+  const dirTxt = (c) => c.dir === 'out' ? '발신 전화' : c.dir === 'miss' ? '부재중 전화' : '수신 전화';
+  if (st.c != null) {
+    const mine = DATA.calls.filter((c) => c.name === st.c);
+    app.innerHTML = `${back('연락처', { c: null })}<div class="scr"><div class="cd">${avatar(st.c)}<h2>${esc(st.c)}</h2></div>${acts(st.c)}
+      ${mine.length ? `<div class="hdr">최근 통화</div><div class="list">${mine.map((c) => `<div class="kv"><b style="font-size:15px">${esc(c.day)}</b><small>${c.time ? esc(c.time) + ' · ' : ''}${dirTxt(c)}${c.dur ? ' · ' + esc(c.dur) : ''}</small></div>`).join('')}</div>` : ''}</div>`;
+    return;
+  }
   if (st.i != null) {
     const c = DATA.calls[st.i];
-    const act = [['msg', '메시지'], ['call', '통화'], ['video', '비디오'], ['mail', '메일']].map(([i, n]) => `<div>${sv(i)}${n}</div>`).join('');
-    app.innerHTML = `${back('최근 기록', { i: null, t: null })}<div class="scr"><div class="cd">${avatar(c.name)}<h2>${esc(c.name)}</h2></div><div class="acts">${act}</div>
-      <div class="list"><div class="kv"><b>${esc(c.day)}</b><small>${c.time ? esc(c.time) + ' · ' : ''}${c.dir === 'out' ? '발신 전화' : c.dir === 'miss' ? '부재중 전화' : '수신 전화'}${c.dur ? ' · ' + esc(c.dur) : ''}</small></div></div>
+    app.innerHTML = `${back('최근 기록', { i: null, t: null })}<div class="scr"><div class="cd">${avatar(c.name)}<h2>${esc(c.name)}</h2></div>${acts(c.name)}
+      <div class="list"><div class="kv"><b>${esc(c.day)}</b><small>${c.time ? esc(c.time) + ' · ' : ''}${dirTxt(c)}${c.dur ? ' · ' + esc(c.dur) : ''}</small></div></div>
       ${c.dir === 'miss' ? '' : `<div class="list" style="margin-top:14px"><button class="row" ${g({ t: st.t ? 0 : 1 })}><svg width="22" height="22" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="#0a84ff"/></svg><div class="rb"><b style="font-weight:500">통화 녹음</b></div></button>
       ${st.t ? `<div class="kv" style="border-top:.5px solid var(--sep)">${c.rec ? c.rec.map((r) => `<small>${esc(r.who)}</small><b style="font-weight:400;margin-bottom:8px">${esc(r.text)}</b>`).join('') : '<small>재생할 수 없는 녹음입니다.</small>'}</div>` : ''}</div>`}</div>`;
     return;
@@ -158,10 +214,10 @@ function phoneApp() {
     body = `<h1 class="lg">최근 기록</h1><div class="seg"><button class="${st.f ? '' : 'on'}" ${g({ f: 0 })}>전체</button><button class="${st.f ? 'on' : ''}" ${g({ f: 1 })}>부재중</button></div><div class="list">${DATA.calls.map((c, i) => c.dir === 'miss' || !st.f ? `
       <button class="row" ${g({ i })}><div class="rb"><b${c.dir === 'miss' ? ' style="color:#ff3b30"' : ''}>${esc(c.name)}</b><small>${c.dir === 'out' ? outArrow : ''}휴대전화</small></div><div class="rt">${esc(c.list)}<span class="info">i</span></div></button>` : '').join('')}</div>`;
   } else if (st.tab === 'contacts') {
-    body = `<h1 class="lg">연락처</h1><div class="list">${sorted.map((n) => `<div class="row">${avatar(n)}<div class="rb"><b>${esc(n)}</b></div></div>`).join('')}</div>`;
+    body = `<h1 class="lg">연락처</h1><div class="list">${sorted.map((n) => `<button class="row" ${g({ c: n })}>${avatar(n)}<div class="rb"><b>${esc(n)}</b></div></button>`).join('')}</div>`;
   } else if (st.tab === 'keypad') {
     const n = st.num || '';
-    body = `<div class="kp-num">${esc(n)}</div><div class="kp">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '*', 0, '#'].map((k) => `<button ${g({ num: n + k })}>${k}</button>`).join('')}</div><div class="call">${sv('call')}</div>`;
+    body = `<div class="kp-num">${esc(n)}</div><div class="kp">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '*', 0, '#'].map((k) => `<button ${g({ num: n + k })}>${k}</button>`).join('')}</div><div class="kp-act"><span></span><button class="call" ${n ? g({ calling: n }) : ''} aria-label="통화">${sv('call')}</button>${n ? `<button class="kdel" ${g({ num: n.slice(0, -1) })} aria-label="삭제">⌫</button>` : '<span></span>'}</div>`;
   } else {
     body = `<div class="empty">${st.tab === 'fav' ? '즐겨찾기 없음' : '음성 사서함 없음'}<small>${st.tab === 'fav' ? '' : '서비스 없음'}</small></div>`;
   }
@@ -171,14 +227,15 @@ function phoneApp() {
 /* ---- 메시지 ---- */
 function msgApp() {
   if (st.i != null) {
-    const t = DATA.threads[st.i]; let last = '';
+    const t = st.i === -1 ? { name: st.nn, msgs: [] } : DATA.threads[st.i]; let last = '';
     const items = t.msgs.map((m) => {
       const dv = m.day !== last ? `<div class="dv">${esc(m.day)}</div>` : ''; last = m.day;
-      return `${dv}<div class="bw ${m.from}"><div class="bb">${esc(m.text)}</div>${m.time ? `<time>${esc(m.time)}</time>` : ''}</div>`;
+      return `${dv}<div class="bw ${m.from}"><div class="bb">${esc(m.text)}</div>${m.fail ? '<em class="fail">!</em>' : m.time ? `<time>${esc(m.time)}</time>` : ''}</div>${m.fail ? '<div class="failtxt">전송되지 않음</div>' : ''}`;
     }).join('');
     app.innerHTML = `<div class="thread"><div class="nav"><button class="back" ${g({ i: null })}><svg width="12" height="20" viewBox="0 0 12 20"><path d="M10 2L2 10l8 8" stroke="#0a84ff" stroke-width="2.600" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
       <div class="tavatar">${avatar(t.name)}<small>${esc(t.name)}</small></div><div class="tscroll">${items}</div>
-      <div class="compose"><i class="glass"></i><span class="glass">메시지</span></div></div>`;
+      <form class="compose"><i class="glass">+</i><input class="glass" placeholder="문자 메시지" autocomplete="off" enterkeyhint="send" aria-label="메시지"><button class="snd" aria-label="보내기">↑</button></form></div>`;
+    const sc = $('.tscroll'); sc.scrollTop = sc.scrollHeight; // 실제처럼 최신 메시지부터 보이게
     return;
   }
   app.innerHTML = `<div class="scr"><h1 class="lg">메시지</h1><div class="list" style="background:transparent;margin:0">${DATA.threads.map((t, i) => {
@@ -192,7 +249,11 @@ function photosApp() {
   const tabs = [['lib', '보관함', 'photo'], ['col', '컬렉션', 'folder']];
   const P = DATA.photos, img = (p) => `<img src="${p.img}">`;
   if (st.v != null) {
-    app.innerHTML = `${back('보관함', { v: null })}<div class="viewer"><div class="vp">${img(P[st.v])}</div><div class="vcap"><b>${esc(P[st.v].taken)}</b></div><div class="vbar"><span>${sv('photo')}</span><span>${sv('trash')}</span></div></div>`;
+    app.innerHTML = `${back('보관함', { v: null })}<div class="viewer"><div class="vp" id="vp">${img(P[st.v])}</div><div class="vcap"><b>${esc(P[st.v].taken)}</b></div><div class="vbar"><span>${sv('photo')}</span><span class="vcnt">${st.v + 1} / ${P.length}</span><span>${sv('trash')}</span></div></div>`;
+    const vp = $('#vp'); let x0 = null;
+    vp.onpointerdown = (e) => { x0 = e.clientX; };
+    vp.onpointerup = (e) => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40 && !vp.classList.contains('zoom')) flip(dx < 0 ? 1 : -1); };
+    vp.ondblclick = () => vp.classList.toggle('zoom');
     return;
   }
   if (st.tab === 'trash') {
@@ -205,6 +266,8 @@ function photosApp() {
     : `<h1 class="lg">보관함</h1><div class="pgrid">${P.map((p, i) => `<button ${g({ v: i })}>${img(p)}</button>`).join('')}</div><div class="note">사진 ${P.length}장</div>`;
   app.innerHTML = `<div class="scr">${body}</div>${tabbar(tabs, st.tab)}`;
 }
+
+function flip(d) { const v = st.v + d; if (v >= 0 && v < DATA.photos.length) go({ v }); }
 
 /* ---- 캘린더 ---- */
 function calApp() {
