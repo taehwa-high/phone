@@ -146,13 +146,19 @@ app.onclick = (e) => {
 // 연락처·통화 기록의 메시지 버튼 → 그 사람과의 대화방(없으면 새 대화)
 function doAct(k, n) {
   if (k === 'msg') { const i = DATA.threads.findIndex((t) => t.name === n); openApp('msg'); go(i >= 0 ? { i } : { i: -1, nn: n }); }
+  if (k === 'retry') { sendFail(DATA.threads[st.i].msgs[n]); go({ sheet: null }); }
+}
+// 서비스 없음: 잠깐 '전송 중' → 실패. 잠그거나 새로고침하면 보낸 문자는 사라짐
+function sendFail(m) {
+  m.fail = 0; m.sending = 1;
+  setTimeout(() => { m.sending = 0; m.fail = 1; if (st.name === 'msg' && st.i != null) render(); }, 1800);
 }
 app.onsubmit = (e) => {
   e.preventDefault(); const inp = e.target.querySelector('input'), text = inp.value.trim(); if (!text) return;
   if (st.i === -1) { DATA.threads.unshift({ name: st.nn, list: '', msgs: [] }); st.i = 0; }
   const t = DATA.threads[st.i], now = $('#sl').textContent;
-  t.msgs.push({ from: 'me', day: '오늘', text, time: `오전 ${now}`, fail: 1 }); t.list = `오전 ${now}`; // 서비스 없음 → 전송 실패. 잠그거나 새로고침하면 사라짐
-  render(); $('.compose input').focus();
+  const m = { from: 'me', day: '오늘', text, time: `오전 ${now}` }; t.msgs.push(m); t.list = `오전 ${now}`;
+  sendFail(m); render(); $('.compose input').focus();
 };
 let callT;
 const g = (o) => `data-go='${JSON.stringify(o)}'`;
@@ -230,11 +236,12 @@ function msgApp() {
     const t = st.i === -1 ? { name: st.nn, msgs: [] } : DATA.threads[st.i]; let last = '';
     const items = t.msgs.map((m) => {
       const dv = m.day !== last ? `<div class="dv">${esc(m.day)}</div>` : ''; last = m.day;
-      return `${dv}<div class="bw ${m.from}"><div class="bb">${esc(m.text)}</div>${m.fail ? '<em class="fail">!</em>' : m.time ? `<time>${esc(m.time)}</time>` : ''}</div>${m.fail ? '<div class="failtxt">전송되지 않음</div>' : ''}`;
+      return `${dv}<div class="bw ${m.from}"><div class="bb">${esc(m.text)}</div>${m.fail ? `<button class="fail" ${g({ sheet: t.msgs.indexOf(m) })} aria-label="전송되지 않음">!</button>` : m.sending ? '' : m.time ? `<time>${esc(m.time)}</time>` : ''}</div>${m.fail ? '<div class="failtxt">전송되지 않음</div>' : m.sending ? '<div class="sendtxt">전송 중…</div>' : ''}`;
     }).join('');
     app.innerHTML = `<div class="thread"><div class="nav"><button class="back" ${g({ i: null })}><svg width="12" height="20" viewBox="0 0 12 20"><path d="M10 2L2 10l8 8" stroke="#0a84ff" stroke-width="2.600" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
       <div class="tavatar">${avatar(t.name)}<small>${esc(t.name)}</small></div><div class="tscroll">${items}</div>
-      <form class="compose"><i class="glass">+</i><input class="glass" placeholder="문자 메시지" autocomplete="off" enterkeyhint="send" aria-label="메시지"><button class="snd" aria-label="보내기">↑</button></form></div>`;
+      <form class="compose"><i class="glass">+</i><input class="glass" placeholder="문자 메시지" autocomplete="off" enterkeyhint="send" aria-label="메시지"><button class="snd" aria-label="보내기">↑</button></form>
+      ${st.sheet != null ? `<div class="sheet-bg" ${g({ sheet: null })}></div><div class="sheet"><div class="sh-box"><small>메시지가 전송되지 않았습니다.</small><button data-do="retry" data-n="${st.sheet}">다시 시도</button></div><button class="sh-cancel" ${g({ sheet: null })}>취소</button></div>` : ''}</div>`;
     const sc = $('.tscroll'); sc.scrollTop = sc.scrollHeight; // 실제처럼 최신 메시지부터 보이게
     return;
   }
