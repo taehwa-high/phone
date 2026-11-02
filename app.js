@@ -20,7 +20,36 @@ function show(name) {
   app.classList.add('hidden'); app.className = 'layer hidden';
   screen.className = name === 'lock' ? 'st-lock' : '';
 }
-function relock() { DATA = null; app.innerHTML = ''; code = ''; show('lock'); }
+/* ---- 공유 기록: 보낸 문자·찍은 사진이 모든 사람 폰에 남음 (Supabase phone_log 표) ---- */
+const SB = 'https://uqxsqolcidnypqnxmcwo.supabase.co/rest/v1/phone_log', SBH = { apikey: 'sb_publishable_AxXOh5W_XIvEu6QjUbQyOQ_Ph4FLcse', 'Content-Type': 'application/json' };
+let lastId = 0, posting = 0;
+function addRow(r) {
+  if (DATA.photos.some((p) => p.id === r.id) || DATA.threads.some((t) => t.msgs.some((m) => m.id === r.id))) return;
+  if (r.kind === 'photo') return DATA.photos.push({ img: r.img, taken: r.taken, id: r.id });
+  let t = DATA.threads.find((x) => x.name === r.thread);
+  if (!t) { t = { name: r.thread, list: '', msgs: [] }; DATA.threads.unshift(t); }
+  t.msgs.push({ from: 'me', day: '오늘', text: r.body, time: r.taken, fail: 1, id: r.id }); t.list = r.taken;
+}
+async function sync() {
+  if (!DATA || posting) return;
+  try {
+    const rows = await (await fetch(`${SB}?id=gt.${lastId}&order=id`, { headers: SBH, cache: 'no-store' })).json();
+    if (!DATA || posting || !Array.isArray(rows) || !rows.length) return;
+    rows.forEach(addRow); lastId = rows[rows.length - 1].id;
+    if (st.name === 'msg' || st.name === 'photos') { const sc = $('.tscroll'), y = sc && sc.scrollTop, inp = $('.compose input'), v = inp && inp.value; render(); if (inp) { $('.compose input').value = v; } if (sc && $('.tscroll')) $('.tscroll').scrollTop = $('.tscroll').scrollHeight; }
+  } catch { /* 연결 안 되면 다음 확인 때 다시 */ }
+}
+setInterval(sync, 4000);
+async function post(row, local) {
+  posting++;
+  try {
+    const [r] = await (await fetch(SB, { method: 'POST', headers: { ...SBH, Prefer: 'return=representation' }, body: JSON.stringify(row) })).json();
+    local.id = r.id;
+    // 내가 올린 것 앞에 남이 올린 게 있으면 놓치지 않게 lastId는 sync가 올림
+  } catch { /* 저장 실패해도 내 화면엔 남음 */ }
+  posting--;
+}
+function relock() { lastId = 0; DATA = null; app.innerHTML = ''; code = ''; show('lock'); }
 $('#power').onclick = relock;
 
 /* ---- 잠금 화면: 탭 또는 위로 쓸기 ---- */
@@ -68,7 +97,7 @@ async function attempt(c) {
   } catch {
     DATA = null;
   }
-  if (DATA) return goHome();
+  if (DATA) { await sync(); return goHome(); }
   {
     const d = $('#pwDots'); d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake');
     code = ''; setTimeout(drawDots, 450);
@@ -117,17 +146,56 @@ function openApp(name) {
 }
 function openCam() {
   st = { name: 'cam' }; app.className = 'layer cam';
-  app.innerHTML = `<div class="vf"></div><div class="cm-top"><span>⚡︎</span><span>⌃</span><span>◎</span></div>
+  app.innerHTML = `<canvas class="vf" id="vf" width="402" height="544"></canvas><div class="cm-top"><span>⚡︎</span><span>⌃</span><span>◎</span></div>
     <div class="cm-zoom">${['.5', '1×', '2'].map((z, i) => `<button data-cam="zoom" class="${i === 1 ? 'on' : ''}">${z}</button>`).join('')}</div>
     <div class="cm-modes">${['비디오', '사진', '인물 사진'].map((m) => `<button data-cam="mode" class="${m === '사진' ? 'on' : ''}">${m}</button>`).join('')}</div>
-    <div class="cm-bar"><button class="th" data-cam="th" aria-label="최근 사진"></button><button class="sh" data-cam="sh" aria-label="촬영"></button><button class="fl" data-cam="fl" aria-label="카메라 전환">⟲</button></div>`;
+    <div class="cm-bar"><button class="th" data-cam="th" aria-label="최근 사진">${DATA.photos.length ? `<img src="${DATA.photos[DATA.photos.length - 1].img}" alt="">` : ''}</button><button class="sh" data-cam="sh" aria-label="촬영"></button><button class="fl" data-cam="fl" aria-label="카메라 전환">⟲</button></div>`;
+  camLoop();
+}
+/* 렌즈가 깨진 카메라: 흐릿한 빛 번짐 + 노이즈 + 가끔 화면 찢김 + 유리 금 */
+const CRACK = (() => {
+  let sd = 31; const R = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  const p = new Path2D(), cx = 250, cy = 190, rays = [];
+  for (let i = 0; i < 15; i++) {
+    let a = (i / 15) * Math.PI * 2 + R() * .3, x = cx, y = cy; const pts = [[x, y]], len = 120 + R() * 420;
+    p.moveTo(x, y);
+    for (let d = 0; d < len;) { const st = 14 + R() * 30; d += st; a += (R() - .5) * .5; x += Math.cos(a) * st; y += Math.sin(a) * st; p.lineTo(x, y); pts.push([x, y]);
+      if (R() < .12) { const b = a + (R() < .5 ? -1 : 1) * (.5 + R() * .6), bl = 20 + R() * 60; p.moveTo(x, y); p.lineTo(x + Math.cos(b) * bl, y + Math.sin(b) * bl); p.moveTo(x, y); } }
+    rays.push(pts);
+  }
+  [1, 3].forEach((k) => { rays.forEach((r, i) => { const q = rays[(i + 1) % rays.length]; if (r[k] && q[k]) { p.moveTo(...r[k]); p.lineTo(...q[k]); } }); });
+  return p;
+})();
+const noise = document.createElement('canvas'); noise.width = 201; noise.height = 272;
+function camFrame(c, t) {
+  const x = c.getContext('2d'), w = c.width, h = c.height;
+  x.fillStyle = '#16171c'; x.fillRect(0, 0, w, h);
+  [[.3, .25, 160, 'rgba(255,214,170,.22)'], [.75, .7, 200, 'rgba(120,140,190,.18)'], [.5, .55, 120, 'rgba(255,255,240,.12)']].forEach(([px, py, r, col], i) => {
+    const gx = px * w + Math.sin(t / 1500 + i) * 18, gy = py * h + Math.cos(t / 1900 + i) * 14, gr = x.createRadialGradient(gx, gy, 0, gx, gy, r);
+    gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
+  const n = noise.getContext('2d'), d = n.createImageData(201, 272);
+  for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 45; }
+  n.putImageData(d, 0, 0); x.imageSmoothingEnabled = false; x.drawImage(noise, 0, 0, w, h);
+  if (Math.random() < .18) for (let k = 0; k < 1 + Math.random() * 3; k++) { const sy = Math.random() * h, sh = 4 + Math.random() * 30; x.drawImage(c, 0, sy, w, sh, (Math.random() - .5) * 40, sy, w, sh); }
+  if (Math.random() < .06) { x.fillStyle = `rgba(${Math.random() < .5 ? '255,40,80' : '40,255,200'},.15)`; x.fillRect(0, Math.random() * h, w, 3 + Math.random() * 12); }
+  x.lineJoin = 'round'; x.strokeStyle = 'rgba(0,0,0,.5)'; x.lineWidth = 2.4; x.stroke(CRACK);
+  x.strokeStyle = 'rgba(235,240,255,.55)'; x.lineWidth = 1; x.stroke(CRACK);
+  const sp = x.createRadialGradient(250, 190, 0, 250, 190, 26); sp.addColorStop(0, 'rgba(255,255,255,.5)'); sp.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = sp; x.fillRect(220, 160, 60, 60);
+}
+function camLoop() { const c = $('#vf'); if (!c || st.name !== 'cam') return; camFrame(c, performance.now()); setTimeout(() => requestAnimationFrame(camLoop), 50); }
+function shoot() {
+  const c = document.createElement('canvas'); c.width = 302; c.height = 408;
+  c.getContext('2d').drawImage($('#vf'), 0, 0, 302, 408);
+  const img = c.toDataURL('image/jpeg', .6), p = { img, taken: `2033년 10월 31일 오전 ${$('#sl').textContent}` };
+  DATA.photos.push(p); $('.cm-bar .th').innerHTML = `<img src="${img}" alt="">`;
+  post({ kind: 'photo', img, taken: p.taken }, p);
 }
 function camTap(b) {
   const k = b.dataset.cam;
   if (k === 'zoom' || k === 'mode') { b.parentNode.querySelector('.on').classList.remove('on'); b.classList.add('on'); }
   if (k === 'mode') $('.cm-bar .sh').classList.toggle('rec', b.textContent === '비디오');
   if (k === 'fl') { const v = $('.vf'); v.classList.remove('flip'); void v.offsetWidth; v.classList.add('flip'); }
-  if (k === 'sh') { const v = $('.vf'); v.classList.remove('snap'); void v.offsetWidth; v.classList.add('snap'); $('.cm-bar .th').classList.add('shot'); } // 찍은 사진은 사진첩에 넣지 않음(증거 사진만 유지)
+  if (k === 'sh') { const v = $('.vf'); v.classList.remove('snap'); void v.offsetWidth; v.classList.add('snap'); shoot(); } // 찍은 사진은 사진첩에 쌓이고 다른 사람 폰에도 남음
   if (k === 'th') openApp('photos');
 }
 function closeApp() {
@@ -158,7 +226,7 @@ app.onsubmit = (e) => {
   if (st.i === -1) { DATA.threads.unshift({ name: st.nn, list: '', msgs: [] }); st.i = 0; }
   const t = DATA.threads[st.i], now = $('#sl').textContent;
   const m = { from: 'me', day: '오늘', text, time: `오전 ${now}` }; t.msgs.push(m); t.list = `오전 ${now}`;
-  sendFail(m); render(); $('.compose input').focus();
+  sendFail(m); render(); post({ kind: 'msg', thread: t.name, body: text.slice(0, 500), taken: m.time }, m); $('.compose input').focus();
 };
 let callT;
 const g = (o) => `data-go='${JSON.stringify(o)}'`;
@@ -223,7 +291,7 @@ function phoneApp() {
     body = `<h1 class="lg">연락처</h1><div class="list">${sorted.map((n) => `<button class="row" ${g({ c: n })}>${avatar(n)}<div class="rb"><b>${esc(n)}</b></div></button>`).join('')}</div>`;
   } else if (st.tab === 'keypad') {
     const n = st.num || '';
-    body = `<div class="kp-num">${esc(n)}</div><div class="kp">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '*', 0, '#'].map((k) => `<button ${g({ num: n + k })}>${k}</button>`).join('')}</div><div class="kp-act"><span></span><button class="call" ${n ? g({ calling: n }) : ''} aria-label="통화">${sv('call')}</button>${n ? `<button class="kdel" ${g({ num: n.slice(0, -1) })} aria-label="삭제">⌫</button>` : '<span></span>'}</div>`;
+    body = `<div class="kpw"><div class="kp-num">${esc(n)}</div><div class="kp">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '*', 0, '#'].map((k) => `<button ${g({ num: n + k })}>${k}</button>`).join('')}</div><div class="kp-act"><span></span><button class="call" ${n ? g({ calling: n }) : ''} aria-label="통화">${sv('call')}</button>${n ? `<button class="kdel" ${g({ num: n.slice(0, -1) })} aria-label="삭제">⌫</button>` : '<span></span>'}</div></div>`;
   } else {
     body = `<div class="empty">${st.tab === 'fav' ? '즐겨찾기 없음' : '음성 사서함 없음'}<small>${st.tab === 'fav' ? '' : '서비스 없음'}</small></div>`;
   }

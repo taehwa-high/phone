@@ -204,3 +204,10 @@ button.fail{cursor:pointer;padding:0}
 .sh-box small{display:block;padding:14px;font-size:13px;color:var(--gray);border-bottom:.5px solid var(--sep)}
 .sh-box button,.sh-cancel{display:block;width:100%;padding:17px 0;font-size:20px;color:var(--blue)}
 .sh-cancel{font-weight:600}
+
+/* 깨진 렌즈 카메라 · 키패드 위치 (2026-11-02) */
+canvas.vf{width:100%;height:544px}
+.cm-bar .th{overflow:hidden}.cm-bar .th img{width:100%;height:100%;object-fit:cover;display:block}
+.kpw{position:absolute;left:0;right:0;bottom:104px}
+.kpw .kp-num{padding-top:0;height:52px;margin-bottom:6px}
+canvas.vf.snap{animation:snapc .3s}@keyframes snapc{0%{filter:brightness(5)}}
