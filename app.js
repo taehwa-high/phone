@@ -125,15 +125,48 @@ const ICON = {
 const icon = (k) => `<svg viewBox="0 0 60 60">${ICON[k]}</svg>`;
 
 /* ---- 홈 화면 ---- */
-const APPS = [['cal', '캘린더', 'cal'], ['photos', '사진', 'photos']];
-const DOCK = [['phone', '전화', 'phone'], ['msg', '메시지', 'msg']];
-const tile = ([k, n, open]) => `<button class="ap" ${open ? `data-open="${open}"` : ''} aria-label="${n}">${icon(k)}<span>${n}</span></button>`;
+// 체육 교사(34세) 폰다운 앱. 로고는 실제 로고를 베끼지 않고 색·글자로만 비슷하게
+const T = (bg, txt, fg = '#fff', fs = 22, fw = 800) => `<rect width="60" height="60" fill="${bg}"/><text x="30" y="${30 + fs * .36}" text-anchor="middle" font-size="${fs}" font-weight="${fw}" fill="${fg}" font-family="-apple-system,'Apple SD Gothic Neo',sans-serif">${txt}</text>`;
+Object.assign(ICON, {
+  kakao: `<rect width="60" height="60" fill="#fee500"/><ellipse cx="30" cy="28" rx="18" ry="14" fill="#3a1d1d"/><path d="M20 38l-2 8 8-5z" fill="#3a1d1d"/><text x="30" y="32" text-anchor="middle" font-size="10" font-weight="800" fill="#fee500" font-family="sans-serif">TALK</text>`,
+  naver: T('#03c75a', 'N', '#fff', 30, 900),
+  youtube: `<rect width="60" height="60" fill="#fff"/><rect x="10" y="17" width="40" height="27" rx="8" fill="#ff0000"/><path d="M26 24v13l11-6.500z" fill="#fff"/>`,
+  insta: `<defs><linearGradient id="gi" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#feda75"/><stop offset=".35" stop-color="#fa7e1e"/><stop offset=".65" stop-color="#d62976"/><stop offset="1" stop-color="#4f5bd5"/></linearGradient></defs><rect width="60" height="60" fill="url(#gi)"/><rect x="15" y="15" width="30" height="30" rx="9" fill="none" stroke="#fff" stroke-width="3.500"/><circle cx="30" cy="30" r="7" fill="none" stroke="#fff" stroke-width="3.500"/><circle cx="39" cy="21" r="2" fill="#fff"/>`,
+  hiclass: T('#2f6bff', '하이', '#fff', 18),
+  cool: T('#1a9be6', '쿨', '#fff', 26),
+  ealimi: T('#ff8a00', 'e', '#fff', 34, 700),
+  band: T('#06c755', 'b', '#fff', 32, 900),
+  health: `<rect width="60" height="60" fill="#fff"/><path d="M30 46S13 35 13 24a8.500 8.500 0 0117-3 8.500 8.500 0 0117 3c0 11-17 22-17 22z" fill="#ff2d55"/>`,
+  fitness: `<rect width="60" height="60" fill="#000"/><circle cx="30" cy="30" r="19" fill="none" stroke="#fa114f" stroke-width="5"/><circle cx="30" cy="30" r="13" fill="none" stroke="#92e82a" stroke-width="5"/><circle cx="30" cy="30" r="7" fill="none" stroke="#1eeaef" stroke-width="5"/>`,
+  run: T('#111', 'RUN', '#fff', 17, 900),
+  toss: T('#fff', 'T', '#0064ff', 32, 900),
+  kbank: T('#fee500', 'bank', '#3a1d1d', 15, 800),
+  coupang: T('#fff', '쿠팡', '#c4302b', 17, 800),
+  baemin: T('#2ac1bc', '배민', '#fff', 18, 800),
+  carrot: T('#ff6f0f', '당근', '#fff', 17, 800),
+  music: T('#fa2d48', '♪', '#fff', 30, 700),
+});
+const APPS = [['cal', '캘린더', 'cal'], ['photos', '사진', 'photos'], ['camera', '카메라', 'cam'], ['clock', '시계', 'clock'],
+  ['kakao', '카카오톡', 'net'], ['naver', '네이버', 'net'], ['youtube', 'YouTube', 'net'], ['insta', 'Instagram', 'net'],
+  ['hiclass', '하이클래스', 'net'], ['cool', '쿨메신저', 'net'], ['ealimi', 'e알리미', 'net'], ['band', '밴드', 'net'],
+  ['health', '건강', 'net'], ['fitness', '피트니스', 'net'], ['run', '런클럽', 'net'], ['carrot', '당근', 'net'],
+  ['toss', '토스', 'net'], ['kbank', '카카오뱅크', 'net'], ['coupang', '쿠팡', 'net'], ['baemin', '배달의민족', 'net'],
+  ['weather', '날씨', 'net'], ['maps', '지도', 'net'], ['notes', '메모', 'notes'], ['settings', '설정', 'settings']];
+const DOCK = [['phone', '전화', 'phone'], ['web', 'Safari', 'net'], ['msg', '메시지', 'msg'], ['music', '음악', 'net']];
+const tile = ([k, n, open]) => `<button class="ap" data-k="${k}" ${open ? `data-open="${open}"` : ''} aria-label="${n}">${icon(k)}<span>${n}</span></button>`;
 function goHome(toCam = true) {
   show('home');
-  home.innerHTML = `<div class="grid">${APPS.map(tile).join('')}</div><div class="dots"><i></i><i></i></div><div class="dock">${DOCK.map(tile).join('')}</div>`;
+  home.innerHTML = `<div class="grid">${APPS.map(tile).join('')}</div><div class="spill">${sv('search')}검색</div><div class="dock">${DOCK.map(tile).join('')}</div>`;
   if (toCam) openCam(); // 잠금 해제 직후엔 카메라가 켜져 있던 상태
 }
-home.onclick = (e) => { const b = e.target.closest('[data-open]'); if (b) openApp(b.dataset.open); };
+const CORE = ['phone', 'msg', 'photos', 'cal'];
+home.onclick = (e) => {
+  const b = e.target.closest('[data-open]'); if (!b) return;
+  const o = b.dataset.open, k = APPS.concat(DOCK).find((a) => a[0] === b.dataset.k);
+  if (o === 'cam') return openCam();
+  if (CORE.includes(o)) return openApp(o);
+  openApp('stub'); go({ k: k[0], n: k[1], kind: o, splash: o === 'net' });
+};
 
 /* ---- 앱 열고 닫기 ---- */
 let st = {};
@@ -232,7 +265,30 @@ let callT;
 const g = (o) => `data-go='${JSON.stringify(o)}'`;
 const back = (label, o) => `<div class="nav"><button class="back" ${g(o)}><svg width="12" height="20" viewBox="0 0 12 20"><path d="M10 2L2 10l8 8" stroke="#0a84ff" stroke-width="2.600" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>${label}</button></div>`;
 const avatar = (n) => `<div class="av">${esc(n.trim()[0])}</div>`;
-function render() { ({ phone: phoneApp, msg: msgApp, photos: photosApp, cal: calApp })[st.name](); }
+function render() { ({ phone: phoneApp, msg: msgApp, photos: photosApp, cal: calApp, stub: stubApp })[st.name](); }
+/* 나머지 앱: 서비스 없음이라 인터넷 앱은 로딩 후 오프라인 안내, 기본 앱은 간단한 화면 */
+let splashT;
+function stubApp() {
+  clearTimeout(splashT); screen.classList.add('dark');
+  if (st.splash) {
+    app.innerHTML = `<div class="splash">${icon(st.k)}</div>`;
+    splashT = setTimeout(() => { if (st.name === 'stub' && st.splash) go({ splash: false }); }, 900);
+    return;
+  }
+  if (st.kind === 'net') {
+    app.innerHTML = `<div class="offline">${icon(st.k)}<b>인터넷에 연결되어 있지 않습니다</b><small>셀룰러 데이터 또는 Wi‑Fi에 연결한 후<br>다시 시도해 주세요.</small><button ${g({ splash: true })}>다시 시도</button></div>`;
+  } else if (st.kind === 'clock') {
+    app.innerHTML = `<div class="scr"><h1 class="lg">세계 시계</h1><div class="list"><div class="row"><div class="rb"><small>오늘, +0시간</small><b style="font-size:22px;font-weight:400">서울</b></div><div class="wc">${$('#sl').textContent}<small>오전</small></div></div></div></div>`;
+  } else if (st.kind === 'notes') {
+    app.innerHTML = `<div class="scr"><h1 class="lg">메모</h1><div class="empty">메모 없음</div></div>`;
+  } else {
+    const r = (t, v, c) => `<div class="row"><i class="si" style="background:${c}"></i><div class="rb"><b style="font-weight:400">${t}</b></div><div class="rt" style="align-self:center">${v} ›</div></div>`;
+    app.innerHTML = `<div class="scr"><h1 class="lg">설정</h1><div class="list"><div class="row">${avatar('남우혜')}<div class="rb"><b>남우혜</b><small>Apple 계정, iCloud 및 기타 항목</small></div><div class="rt">›</div></div></div>
+      <div class="list" style="margin-top:20px">${r('에어플레인 모드', '', '#ff9500')}${r('Wi‑Fi', '끔', '#0a84ff')}${r('Bluetooth', '켬', '#0a84ff')}${r('셀룰러', '서비스 없음', '#34c759')}${r('개인용 핫스팟', '끔', '#34c759')}</div>
+      <div class="list" style="margin-top:20px">${r('알림', '', '#ff3b30')}${r('사운드 및 햅틱', '', '#ff2d55')}${r('집중 모드', '', '#5e5ce6')}${r('스크린 타임', '', '#5e5ce6')}</div>
+      <div class="list" style="margin-top:20px">${r('일반', '', '#8e8e93')}${r('배터리', '', '#34c759')}${r('개인정보 보호 및 보안', '', '#0a84ff')}</div></div>`;
+  }
+}
 
 /* ---- 전화 ---- */
 const SVG = {
@@ -249,6 +305,7 @@ const SVG = {
   folder: 'M3 6a2 2 0 012-2h4l2 2h8a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z',
   trash: 'M9 3h6l1 2h4v2H4V5h4zM6 9h12l-1 12H7z',
 };
+SVG.search = 'M10 3a7 7 0 015.600 11.200l4.600 4.600-1.400 1.400-4.600-4.600A7 7 0 1110 3zm0 2a5 5 0 100 10 5 5 0 000-10z';
 const sv = (k) => `<svg viewBox="0 0 24 24"><path d="${SVG[k]}"/></svg>`;
 const tabbar = (tabs, cur) => `<div class="tabbar glass">${tabs.map(([id, n, ic]) => `<button class="${cur === id ? 'on' : ''}" ${g({ tab: id, i: null, v: null })}>${sv(ic)}<span>${n}</span></button>`).join('')}</div>`;
 const outArrow = '<svg width="13" height="13" viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8" stroke="#8a8a8e" stroke-width="2.500" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';

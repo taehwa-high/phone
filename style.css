@@ -211,3 +211,16 @@ canvas.vf{width:100%;height:544px}
 .kpw{position:absolute;left:0;right:0;bottom:104px}
 .kpw .kp-num{padding-top:0;height:52px;margin-bottom:6px}
 canvas.vf.snap{animation:snapc .3s}@keyframes snapc{0%{filter:brightness(5)}}
+
+/* 홈 화면 앱 구성 · 나머지 앱 (2026-11-02) */
+.grid{top:66px;row-gap:16px}
+.spill{position:absolute;bottom:128px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:16px;background:rgba(255,255,255,.22);backdrop-filter:blur(20px);color:#fff;font-size:13px;font-weight:600}
+.spill svg{width:13px;height:13px;fill:#fff}
+#app.stub{background:#fff}
+.splash{position:absolute;inset:0;display:grid;place-items:center;background:#fff}.splash svg{width:96px;height:96px;border-radius:22px}
+.offline{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 40px;gap:10px;background:#fff}
+.offline svg{width:64px;height:64px;border-radius:15px;margin-bottom:10px;opacity:.85}
+.offline b{font-size:18px}.offline small{font-size:14px;color:var(--gray);line-height:1.5}
+.offline button{margin-top:14px;padding:10px 22px;border-radius:20px;background:#e9e9ee;color:var(--blue);font-size:15px;font-weight:600}
+.wc{font-size:44px;font-weight:300;display:flex;align-items:baseline;gap:4px}.wc small{font-size:18px}
+.si{width:30px;height:30px;border-radius:8px;flex:none}
