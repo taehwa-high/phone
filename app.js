@@ -55,7 +55,7 @@ async function post(row, local) {
   } catch { /* 저장 실패해도 내 화면엔 남음 */ }
   posting--;
 }
-function relock() { lastId = 0; DATA = null; app.innerHTML = ''; code = ''; show('lock'); }
+function relock() { lastId = 0; unlocked.clear(); stopPlay(); DATA = null; app.innerHTML = ''; code = ''; show('lock'); }
 $('#power').onclick = relock;
 
 /* ---- 잠금 화면: 탭 또는 위로 쓸기 ---- */
@@ -154,6 +154,7 @@ const ICON_URL = {
   photos: 'Purple221/v4/72/6e/79/726e7943-4a7d-091d-3c55-1d46477cdf08/photosCalistoga-0-0-1x_U007epad-0-1-0-85-220.png',
   camera: 'Purple211/v4/fd/d6/b2/fdd6b24d-071d-b41d-045c-b72aa99cf9fa/cameraCalistoga-0-0-1x_U007epad-0-1-0-85-220.png',
   health: 'Purple221/v4/c4/38/d1/c438d148-1fe2-67a3-c768-6158621cc13f/healthCalistoga-0-0-1x_U007epad-0-1-0-85-220.png',
+  voice: 'Purple221/v4/6c/83/7e/6c837e02-a3f3-d035-1d29-436281c11d08/voice.memosCalistoga-0-0-1x_U007epad-0-1-0-85-220.png',
   msg: 'Purple221/v4/fc/8d/32/fc8d32a0-86a7-83d8-7045-57b4b3e71a0b/messagesCalistoga-0-0-1x_U007epad-0-1-0-85-220.png',
 };
 const icon = (k) => ICON_URL[k] ? `<img class="aicon" src="https://is1-ssl.mzstatic.com/image/thumb/${ICON_URL[k]}/180x180bb.png" alt="">` : `<svg viewBox="0 0 60 60">${ICON[k]}</svg>`;
@@ -183,7 +184,7 @@ Object.assign(ICON, {
 const APPS = [['cal', '캘린더', 'cal'], ['photos', '사진', 'photos'], ['camera', '카메라', 'cam'], ['clock', '시계', 'clock'],
   ['kakao', '카카오톡', 'net'], ['naver', '네이버', 'net'], ['youtube', 'YouTube', 'net'], ['insta', 'Instagram', 'net'],
   ['hiclass', '하이클래스', 'net'], ['cool', '쿨메신저', 'net'], ['ealimi', 'e알리미', 'net'], ['band', '밴드', 'net'],
-  ['health', '건강', 'net'], ['fitness', '피트니스', 'net'], ['run', '런클럽', 'net'], ['carrot', '당근', 'net'],
+  ['health', '건강', 'net'], ['fitness', '피트니스', 'net'], ['run', '런클럽', 'net'], ['voice', '음성 메모', 'voice'],
   ['toss', '토스', 'net'], ['kbank', '카카오뱅크', 'net'], ['coupang', '쿠팡', 'net'], ['baemin', '배달의민족', 'net'],
   ['weather', '날씨', 'net'], ['maps', '지도', 'net'], ['notes', '메모', 'notes'], ['settings', '설정', 'settings']];
 const DOCK = [['phone', '전화', 'phone'], ['web', 'Safari', 'net'], ['msg', '메시지', 'msg'], ['music', '음악', 'net']];
@@ -193,7 +194,7 @@ function goHome(toCam = true) {
   home.innerHTML = `<div class="grid">${APPS.map(tile).join('')}</div><div class="spill">${sv('search')}검색</div><div class="dock">${DOCK.map(tile).join('')}</div>`;
   if (toCam) openCam(); // 잠금 해제 직후엔 카메라가 켜져 있던 상태
 }
-const CORE = ['phone', 'msg', 'photos', 'cal'];
+const CORE = ['phone', 'msg', 'photos', 'cal', 'notes', 'voice'];
 home.onclick = (e) => {
   const b = e.target.closest('[data-open]'); if (!b) return;
   const o = b.dataset.open, k = APPS.concat(DOCK).find((a) => a[0] === b.dataset.k);
@@ -266,6 +267,7 @@ function camTap(b) {
   if (k === 'th') openApp('photos');
 }
 function closeApp() {
+  stopPlay();
   clearTimeout(callT); const was = st.name; st = {};
   app.classList.add('pre'); screen.classList.remove('dark');
   setTimeout(() => { if (st.name) return; app.classList.add('hidden'); app.innerHTML = ''; }, was === 'cam' ? 0 : 250); // 닫히는 사이 다른 앱을 열었으면 그대로 둠
@@ -281,6 +283,7 @@ app.onclick = (e) => {
 // 연락처·통화 기록의 메시지 버튼 → 그 사람과의 대화방(없으면 새 대화)
 function doAct(k, n) {
   if (k === 'msg') { const i = DATA.threads.findIndex((t) => t.name === n); openApp('msg'); go(i >= 0 ? { i } : { i: -1, nn: n }); }
+  if (k === 'vplay' || k === 'vback' || k === 'vfwd') return vAct(k);
   if (k === 'retry') { sendFail(DATA.threads[st.i].msgs[n]); go({ sheet: null }); }
   if (k === 'delphoto') { // 새로 찍은 사진만 삭제 가능, 모든 사람 폰에서 지워짐
     const p = DATA.photos[st.v]; if (!p || !p.id) return;
@@ -294,6 +297,11 @@ function sendFail(m) {
   setTimeout(() => { m.sending = 0; m.fail = 1; if (st.name === 'msg' && st.i != null) render(); }, 1800);
 }
 app.onsubmit = (e) => {
+  if (e.target.classList.contains('nlock')) { // 잠긴 메모 암호
+    e.preventDefault(); const n = DATA.notes[st.n];
+    if (e.target.querySelector('input').value === n.lock) { unlocked.add(st.n); go({ bad: null }); } else go({ bad: 1 });
+    return;
+  }
   e.preventDefault(); const inp = e.target.querySelector('input'), text = inp.value.trim(); if (!text) return;
   if (st.i === -1) { DATA.threads.unshift({ name: st.nn, list: '', msgs: [] }); st.i = 0; }
   const t = DATA.threads[st.i], now = $('#sl').textContent;
@@ -304,7 +312,62 @@ let callT;
 const g = (o) => `data-go='${JSON.stringify(o)}'`;
 const back = (label, o) => `<div class="nav"><button class="back" ${g(o)}><svg width="12" height="20" viewBox="0 0 12 20"><path d="M10 2L2 10l8 8" stroke="#0a84ff" stroke-width="2.600" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>${label}</button></div>`;
 const avatar = (n) => `<div class="av">${esc(n.trim()[0])}</div>`;
-function render() { ({ phone: phoneApp, msg: msgApp, photos: photosApp, cal: calApp, stub: stubApp })[st.name](); }
+function render() { ({ phone: phoneApp, msg: msgApp, photos: photosApp, cal: calApp, stub: stubApp, notes: notesApp, voice: voiceApp })[st.name](); }
+
+/* ---- 메모: 잠긴 메모는 암호(140915)를 넣어야 보임. 폰을 잠그면 다시 잠김 ---- */
+const unlocked = new Set();
+function notesApp() {
+  const N = DATA.notes || [];
+  if (st.n == null) {
+    app.innerHTML = `<div class="scr"><h1 class="lg">메모</h1><div class="hdr">${N.length}개의 메모</div><div class="list">${N.map((n, i) => {
+      const lk = n.lock && !unlocked.has(i), first = n.body.split('\n').find((l) => l.trim()) || '';
+      return `<button class="row" ${g({ n: i })}><div class="rb"><b>${n.lock ? '🔒 ' : ''}${esc(n.title)}</b><small>${esc(n.date)}&nbsp; ${lk ? '잠김' : esc(first)}</small></div></button>`;
+    }).join('')}</div></div>`;
+    return;
+  }
+  const n = N[st.n];
+  if (n.lock && !unlocked.has(st.n)) {
+    app.innerHTML = `${back('메모', { n: null, bad: null })}<div class="nlocked"><div class="lk">🔒</div><b>이 메모는 잠겨 있습니다</b><small>이 메모를 보려면 메모 암호를 입력하십시오.</small>
+      <form class="nlock"><input type="password" inputmode="numeric" placeholder="암호" autocomplete="off" aria-label="메모 암호"><button>확인</button></form><p class="bad">${st.bad ? '암호가 올바르지 않습니다.' : ''}</p></div>`;
+    $('.nlock input').focus();
+    return;
+  }
+  app.innerHTML = `${back('메모', { n: null })}<div class="scr memo"><small>${esc(n.date)}</small><h2>${esc(n.title)}</h2><p>${esc(n.body)}</p></div>`;
+}
+
+/* ---- 음성 메모: 재생하면 녹음 시각에 맞춰 대사가 한 줄씩 나타남(소리 없음) ---- */
+let playT = null, playAt = 0;
+function stopPlay() { clearInterval(playT); playT = null; }
+const mmss = (x) => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}`;
+function voiceApp() {
+  const V = DATA.voice || [];
+  app.innerHTML = `<div class="scr"><h1 class="lg">모든 녹음</h1><div class="list">${V.map((v, i) => {
+    const open = st.p === i;
+    return `<div class="vm${open ? ' open' : ''}"><button class="vm-h" ${g({ p: open ? null : i })}><b>${esc(v.title)}</b><small>${esc(v.date)} ${esc(v.time)}<span>${mmss(v.dur)}</span></small></button>
+      ${open ? `<div class="vm-bar"><i id="vmFill"></i></div><div class="vm-t"><span id="vmCur">0:00</span><span id="vmLeft">-${mmss(v.dur)}</span></div>
+      <div class="vm-ctl"><button data-do="vback" aria-label="15초 뒤로">↺<small>15</small></button><button class="vm-play" data-do="vplay" aria-label="재생">▶</button><button data-do="vfwd" aria-label="15초 앞으로">↻<small>15</small></button></div>
+      <div class="vm-tx" id="vmTx"><small>재생하면 녹음 내용이 여기에 표시됩니다.</small></div>` : ''}</div>`;
+  }).join('')}</div></div>`;
+  stopPlay(); playAt = 0;
+}
+function vDraw() {
+  const v = DATA.voice[st.p], f = $('#vmFill'); if (!f) return stopPlay();
+  f.style.width = `${(playAt / v.dur) * 100}%`; $('#vmCur').textContent = mmss(playAt); $('#vmLeft').textContent = `-${mmss(v.dur - playAt)}`;
+  const shown = v.lines.filter((l) => l.t <= playAt), tx = $('#vmTx');
+  if (tx.dataset.n !== String(shown.length)) {
+    tx.dataset.n = shown.length;
+    tx.innerHTML = shown.length ? shown.map((l) => l.who ? `<p><b>${esc(l.who)}</b>${esc(l.text)}</p>` : `<p class="sfx">${esc(l.text)}</p>`).join('') : '<small>재생하면 녹음 내용이 여기에 표시됩니다.</small>';
+    tx.scrollTop = tx.scrollHeight;
+  }
+  $('.vm-play').textContent = playT ? '❚❚' : '▶';
+}
+function vAct(k) {
+  const v = DATA.voice[st.p];
+  if (k === 'vplay') { if (playT) stopPlay(); else { if (playAt >= v.dur) playAt = 0; playT = setInterval(() => { playAt = Math.min(v.dur, playAt + .25); if (playAt >= v.dur) stopPlay(); vDraw(); }, 250); } }
+  if (k === 'vback') playAt = Math.max(0, playAt - 15);
+  if (k === 'vfwd') playAt = Math.min(v.dur, playAt + 15);
+  vDraw();
+}
 /* 나머지 앱: 서비스 없음이라 인터넷 앱은 로딩 후 오프라인 안내, 기본 앱은 간단한 화면 */
 let splashT;
 function stubApp() {
@@ -376,7 +439,7 @@ function phoneApp() {
     const c = DATA.calls[st.i];
     app.innerHTML = `${back('최근 기록', { i: null, t: null })}<div class="scr"><div class="cd">${avatar(c.name)}<h2>${esc(c.name)}</h2></div>${acts(c.name)}
       <div class="list"><div class="kv"><b>${esc(c.day)}</b><small>${c.time ? esc(c.time) + ' · ' : ''}${dirTxt(c)}${c.dur ? ' · ' + esc(c.dur) : ''}</small></div></div>
-      ${c.dir === 'miss' ? '' : `<div class="list" style="margin-top:14px"><button class="row" ${g({ t: st.t ? 0 : 1 })}><svg width="22" height="22" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="#0a84ff"/></svg><div class="rb"><b style="font-weight:500">통화 녹음</b></div></button>
+      ${c.dir === 'miss' || !c.dur ? '' : `<div class="list" style="margin-top:14px"><button class="row" ${g({ t: st.t ? 0 : 1 })}><svg width="22" height="22" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="#0a84ff"/></svg><div class="rb"><b style="font-weight:500">통화 녹음</b></div></button>
       ${st.t ? `<div class="kv" style="border-top:.5px solid var(--sep)">${c.rec ? c.rec.map((r) => `<small>${esc(r.who)}</small><b style="font-weight:400;margin-bottom:8px">${esc(r.text)}</b>`).join('') : '<small>재생할 수 없는 녹음입니다.</small>'}</div>` : ''}</div>`}</div>`;
     return;
   }
