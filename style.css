@@ -224,3 +224,12 @@ canvas.vf.snap{animation:snapc .3s}@keyframes snapc{0%{filter:brightness(5)}}
 .offline button{margin-top:14px;padding:10px 22px;border-radius:20px;background:#e9e9ee;color:var(--blue);font-size:15px;font-weight:600}
 .wc{font-size:44px;font-weight:300;display:flex;align-items:baseline;gap:4px}.wc small{font-size:18px}
 .si{width:30px;height:30px;border-radius:8px;flex:none}
+
+/* 실제 앱 아이콘 이미지 */
+.ap img.aicon{width:60px;height:60px;border-radius:14px;display:block;transition:transform .12s;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.ap:active img.aicon{transform:scale(.9);filter:brightness(.8)}
+.splash img.aicon{width:96px;height:96px;border-radius:22px}
+.offline img.aicon{width:64px;height:64px;border-radius:15px;margin-bottom:10px;opacity:.85}
+.sh-box button.red{color:#ff3b30}
+.vbar .off svg{fill:#c7c7cc}
+.viewer .vp{touch-action:none;cursor:pointer}.vp img{transition:transform .18s ease}

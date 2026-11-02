@@ -33,9 +33,15 @@ function addRow(r) {
 async function sync() {
   if (!DATA || posting) return;
   try {
-    const rows = await (await fetch(`${SB}?id=gt.${lastId}&order=id`, { headers: SBH, cache: 'no-store' })).json();
-    if (!DATA || posting || !Array.isArray(rows) || !rows.length) return;
-    rows.forEach(addRow); lastId = rows[rows.length - 1].id;
+    const [rows, alive] = await Promise.all([`${SB}?id=gt.${lastId}&order=id`, `${SB}?kind=eq.photo&select=id`].map(async (u) => (await fetch(u, { headers: SBH, cache: 'no-store' })).json()));
+    if (!DATA || posting || !Array.isArray(rows) || !Array.isArray(alive)) return;
+    // 다른 사람이 지운 사진은 내 폰에서도 사라짐 (원래 있던 사진은 id가 없어 그대로)
+    const ids = new Set(alive.map((r) => r.id)), before = DATA.photos.length;
+    DATA.photos = DATA.photos.filter((p) => !p.id || ids.has(p.id));
+    const gone = DATA.photos.length !== before;
+    if (gone && st.name === 'photos') st.v = null;
+    if (!rows.length && !gone) return;
+    rows.forEach(addRow); if (rows.length) lastId = rows[rows.length - 1].id;
     if (st.name === 'msg' || st.name === 'photos') { const sc = $('.tscroll'), y = sc && sc.scrollTop, inp = $('.compose input'), v = inp && inp.value; render(); if (inp) { $('.compose input').value = v; } if (sc && $('.tscroll')) $('.tscroll').scrollTop = $('.tscroll').scrollHeight; }
   } catch { /* 연결 안 되면 다음 확인 때 다시 */ }
 }
@@ -97,7 +103,7 @@ async function attempt(c) {
   } catch {
     DATA = null;
   }
-  if (DATA) { await sync(); return goHome(); }
+  if (DATA) { lastId = 0; await sync(); return goHome(); }
   {
     const d = $('#pwDots'); d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake');
     code = ''; setTimeout(drawDots, 450);
@@ -122,7 +128,35 @@ const ICON = {
   notes: `<rect width="60" height="60" fill="#fff"/><rect width="60" height="16" fill="#ffd60a"/><path d="M10 28h40M10 38h40M10 48h40" stroke="#e5e5ea" stroke-width="2"/>`,
   settings: `<defs>${G('gs', '#b9b9bf', '#7d7d83')}</defs><rect width="60" height="60" fill="url(#gs)"/><circle cx="30" cy="30" r="15" fill="none" stroke="#4a4a4f" stroke-width="7" stroke-dasharray="5 4.500"/><circle cx="30" cy="30" r="10" fill="#4a4a4f"/><circle cx="30" cy="30" r="4.500" fill="#a0a0a6"/>`,
 };
-const icon = (k) => `<svg viewBox="0 0 60 60">${ICON[k]}</svg>`;
+// 실제 앱 아이콘(앱스토어 공식 이미지). 캘린더(오늘 날짜 표시)·전화·설정은 직접 그린 것 유지
+const ICON_URL = {
+  kakao: 'Purple221/v4/57/29/03/572903d9-dde2-3750-92e0-5c43f5822f3f/AppIcon-0-0-1x_U007epad-0-0-0-1-0-0-sRGB-85-220.png',
+  naver: 'Purple221/v4/68/48/00/68480028-fc16-1661-a947-cd4b727bfe39/AppIcon-0-0-1x_U007epad-0-1-0-sRGB-0-85-220.png',
+  youtube: 'Purple211/v4/82/43/be/8243be7f-17c3-33ae-720a-ffcde48bed61/logo_youtube_2024_q4_color-0-0-1x_U007emarketing-0-0-0-7-0-0-0-85-220.png',
+  insta: 'Purple221/v4/44/b0/cc/44b0cc3a-e91f-2824-d98f-3e5e095a73f3/Prod-0-0-1x_U007epad-0-0-0-1-0-0-sRGB-85-220.png',
+  hiclass: 'Purple221/v4/85/28/29/852829dc-36c8-e77f-08ba-f20010b8aad0/AppIcon-0-0-1x_U007emarketing-0-8-0-85-220.png',
+  cool: 'Purple211/v4/66/7f/ce/667fce92-29e1-beb1-4200-6d888497c8a6/AppIcon-0-0-1x_U007emarketing-0-11-0-0-85-220.png',
+  ealimi: 'Purple211/v4/a0/59/d4/a059d44f-9d01-5ea2-00b9-81e611b0becf/ealimi-AppIcon-0-0-1x_U007emarketing-0-6-85-220.png',
+  band: 'Purple211/v4/3a/9b/ca/3a9bcac6-6d0a-d0b5-a1ce-92148c120c44/pumpkin-0-0-1x_U007epad-0-0-0-1-0-0-85-220.png',
+  run: 'Purple221/v4/c5/18/1e/c5181ed9-14c4-af84-d580-35438a4c7b53/AppIconProd-0-0-1x_U007ephone-0-1-0-85-220.png',
+  carrot: 'Purple211/v4/58/42/24/58422462-4525-61e1-3fb5-426c880701ef/AppIcon-0-0-1x_U007ephone-0-1-85-220.png',
+  toss: 'Purple221/v4/a6/14/86/a61486b9-aa38-7e88-43dd-cff5f5f8b6e9/AppIcon-0-0-1x_U007ephone-0-1-0-85-220.png',
+  kbank: 'Purple221/v4/b6/29/64/b6296447-20d3-0a74-2141-6e2ff327ac1b/AppIcon_real-0-0-1x_U007ephone-0-1-0-85-220.png',
+  coupang: 'Purple221/v4/a6/57/6c/a6576ca9-0239-3505-b6c2-2894b1a519f8/AppIcon-0-0-1x_U007emarketing-0-11-0-sRGB-85-220.png',
+  baemin: 'Purple211/v4/a5/25/af/a525af37-1e7e-36f3-3df8-f551bf1acd30/AppIcon-Default-0-0-1x_U007ephone-0-1-0-sRGB-85-220.png',
+  clock: 'Purple211/v4/c0/8e/d2/c08ed244-21b1-9bce-7199-2417712ae123/clockCalistoga-0-0-1x_U007epad-0-1-0-85-220.png',
+  maps: 'Purple211/v4/98/53/2e/98532ed4-879d-02f7-5021-84082f28593e/mapsCalistoga-0-0-1x_U007epad-0-1-0-85-220.png',
+  notes: 'Purple211/v4/e8/53/65/e853659a-0888-7264-743e-0e3875d1505f/notesCalistoga-0-0-1x_U007epad-0-1-85-220.png',
+  weather: 'Purple211/v4/66/d6/cf/66d6cf2c-91a7-6c10-8bd6-54b2dc7b558e/weatherCalistoga-0-0-1x_U007epad-0-1-0-85-220.png',
+  fitness: 'Purple221/v4/5b/48/75/5b487566-14e4-804f-609b-1a57e7d69c78/fitnessCalistoga-0-0-1x_U007epad-0-1-0-sRGB-85-220.png',
+  music: 'Purple211/v4/d5/45/38/d5453893-7719-0067-ed45-1de44d0d8eb9/musicValkyrie-0-0-1x_U007epad-0-1-0-85-220.png',
+  web: 'Purple211/v4/9b/4a/12/9b4a12c2-7ea9-9e38-4d4f-f1342b310519/safariCalistoga-0-0-1x_U007epad-0-1-0-85-220.png',
+  photos: 'Purple221/v4/72/6e/79/726e7943-4a7d-091d-3c55-1d46477cdf08/photosCalistoga-0-0-1x_U007epad-0-1-0-85-220.png',
+  camera: 'Purple211/v4/fd/d6/b2/fdd6b24d-071d-b41d-045c-b72aa99cf9fa/cameraCalistoga-0-0-1x_U007epad-0-1-0-85-220.png',
+  health: 'Purple221/v4/c4/38/d1/c438d148-1fe2-67a3-c768-6158621cc13f/healthCalistoga-0-0-1x_U007epad-0-1-0-85-220.png',
+  msg: 'Purple221/v4/fc/8d/32/fc8d32a0-86a7-83d8-7045-57b4b3e71a0b/messagesCalistoga-0-0-1x_U007epad-0-1-0-85-220.png',
+};
+const icon = (k) => ICON_URL[k] ? `<img class="aicon" src="https://is1-ssl.mzstatic.com/image/thumb/${ICON_URL[k]}/180x180bb.png" alt="">` : `<svg viewBox="0 0 60 60">${ICON[k]}</svg>`;
 
 /* ---- 홈 화면 ---- */
 // 체육 교사(34세) 폰다운 앱. 로고는 실제 로고를 베끼지 않고 색·글자로만 비슷하게
@@ -248,6 +282,11 @@ app.onclick = (e) => {
 function doAct(k, n) {
   if (k === 'msg') { const i = DATA.threads.findIndex((t) => t.name === n); openApp('msg'); go(i >= 0 ? { i } : { i: -1, nn: n }); }
   if (k === 'retry') { sendFail(DATA.threads[st.i].msgs[n]); go({ sheet: null }); }
+  if (k === 'delphoto') { // 새로 찍은 사진만 삭제 가능, 모든 사람 폰에서 지워짐
+    const p = DATA.photos[st.v]; if (!p || !p.id) return;
+    DATA.photos.splice(st.v, 1); go({ v: null, sheet: null });
+    fetch(`${SB}?id=eq.${p.id}`, { method: 'DELETE', headers: SBH }).catch(() => {});
+  }
 }
 // 서비스 없음: 잠깐 '전송 중' → 실패. 잠그거나 새로고침하면 보낸 문자는 사라짐
 function sendFail(m) {
@@ -381,11 +420,22 @@ function photosApp() {
   const tabs = [['lib', '보관함', 'photo'], ['col', '컬렉션', 'folder']];
   const P = DATA.photos, img = (p) => `<img src="${p.img}">`;
   if (st.v != null) {
-    app.innerHTML = `${back('보관함', { v: null })}<div class="viewer"><div class="vp" id="vp">${img(P[st.v])}</div><div class="vcap"><b>${esc(P[st.v].taken)}</b></div><div class="vbar"><span>${sv('photo')}</span><span class="vcnt">${st.v + 1} / ${P.length}</span><span>${sv('trash')}</span></div></div>`;
-    const vp = $('#vp'); let x0 = null;
-    vp.onpointerdown = (e) => { x0 = e.clientX; };
-    vp.onpointerup = (e) => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40 && !vp.classList.contains('zoom')) flip(dx < 0 ? 1 : -1); };
-    vp.ondblclick = () => vp.classList.toggle('zoom');
+    app.innerHTML = `${back('보관함', { v: null })}<div class="viewer"><div class="vp" id="vp">${img(P[st.v])}</div><div class="vcap"><b>${esc(P[st.v].taken)}</b></div><div class="vbar"><span>${sv('photo')}</span><span class="vcnt">${P.length - st.v} / ${P.length}</span>${P[st.v].id ? `<button ${g({ sheet: 1 })} aria-label="삭제">${sv('trash')}</button>` : `<span class="off">${sv('trash')}</span>`}</div>
+      ${st.sheet ? `<div class="sheet-bg" ${g({ sheet: null })}></div><div class="sheet"><div class="sh-box"><small>이 사진이 모든 기기에서 삭제됩니다.</small><button class="red" data-do="delphoto">사진 삭제</button></div><button class="sh-cancel" ${g({ sheet: null })}>취소</button></div>` : ''}</div>`;
+    // 모바일: 손가락을 따라 사진이 움직이고 놓으면 넘어감 / PC: 사진 왼쪽 절반 클릭=이전, 오른쪽 절반=다음
+    const vp = $('#vp'), im = vp.querySelector('img'), sc = parseFloat(getComputedStyle($('#phone')).getPropertyValue('--s')) || 1; let x0 = null, touch = false;
+    vp.onpointerdown = (e) => { x0 = e.clientX; touch = e.pointerType !== 'mouse'; im.style.transition = 'none'; if (touch) vp.setPointerCapture(e.pointerId); };
+    vp.onpointermove = (e) => { if (x0 == null || !touch || vp.classList.contains('zoom')) return; im.style.transform = `translateX(${(e.clientX - x0) / sc}px)`; };
+    vp.onpointerup = (e) => {
+      if (x0 == null) return; const dx = (e.clientX - x0) / sc; x0 = null; im.style.transition = '';
+      if (!touch) { const r = vp.getBoundingClientRect(); return flip(e.clientX < r.left + r.width / 2 ? -1 : 1); }
+      if (vp.classList.contains('zoom')) return;
+      const d = dx < -50 ? 1 : dx > 50 ? -1 : 0, v = st.v - d;
+      if (!d || v < 0 || v >= P.length) { im.style.transform = ''; return; } // 끝이면 제자리로 튕김
+      im.style.transform = `translateX(${d > 0 ? -402 : 402}px)`; setTimeout(() => flip(d), 180);
+    };
+    vp.onpointercancel = () => { x0 = null; im.style.transition = ''; im.style.transform = ''; };
+    vp.ondblclick = () => { if (touch) vp.classList.toggle('zoom'); }; // 두 번 탭 확대는 모바일만(PC 클릭은 넘기기)
     return;
   }
   if (st.tab === 'trash') {
@@ -395,11 +445,12 @@ function photosApp() {
   }
   const body = st.tab === 'col'
     ? `<h1 class="lg">컬렉션</h1><div class="hdr">유틸리티</div><div class="list"><button class="alb" ${g({ tab: 'trash' })}>${sv('trash')}최근 삭제<em>0</em></button></div>`
-    : `<h1 class="lg">보관함</h1><div class="pgrid">${P.map((p, i) => `<button ${g({ v: i })}>${img(p)}</button>`).join('')}</div><div class="note">사진 ${P.length}장</div>`;
+    : `<h1 class="lg">보관함</h1><div class="pgrid">${[...P.keys()].reverse().map((i) => `<button ${g({ v: i })}>${img(P[i])}</button>`).join('')}</div><div class="note">사진 ${P.length}장</div>`;
   app.innerHTML = `<div class="scr">${body}</div>${tabbar(tabs, st.tab)}`;
 }
 
-function flip(d) { const v = st.v + d; if (v >= 0 && v < DATA.photos.length) go({ v }); }
+// 사진첩이 최신순이라 다음 = 더 오래된 사진
+function flip(d) { const v = st.v - d; if (v >= 0 && v < DATA.photos.length) go({ v }); }
 
 /* ---- 캘린더 ---- */
 function calApp() {
