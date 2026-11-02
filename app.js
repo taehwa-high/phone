@@ -527,4 +527,64 @@ function calApp() {
 }
 
 /* ---- 시작 ---- */
+/* ---- 액정 위 피 묻은 지문: 암호 숫자(1·4·0·9·5) 자리. 쓸면 번지며 닦이고, 탭하면 번짐 ---- */
+(() => {
+  const W = 402, H = 874, cv = document.createElement('canvas'); cv.id = 'glass'; cv.width = W * 2; cv.height = H * 2;
+  screen.appendChild(cv);
+  const x = cv.getContext('2d'); x.scale(2, 2);
+  let sd = 915; const R = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  // 키 중심: 패드 top 318, 키 80px, 가로 간격 22, 세로 간격 15
+  const key = (d) => { const i = d === 0 ? 10 : d - 1; return [99 + (i % 3) * 102, 358 + Math.floor(i / 3) * 95]; };
+  function print(cx, cy, a, k) {
+    x.save(); x.translate(cx, cy); x.rotate(a); x.filter = 'blur(.4px)';
+    x.beginPath(); x.ellipse(0, 0, 16, 21, 0, 0, Math.PI * 2); x.clip();
+    const gr = x.createRadialGradient(0, 2, 2, 0, 0, 21); gr.addColorStop(0, `rgba(120,8,10,${.45 * k})`); gr.addColorStop(1, `rgba(90,4,6,${.12 * k})`);
+    x.fillStyle = gr; x.fillRect(-20, -24, 40, 48);
+    for (let r = 2; r < 24; r += 2.4) { // 지문 결: 끊긴 동심 타원
+      x.setLineDash([4 + R() * 10, 1 + R() * 3]); x.lineDashOffset = R() * 20;
+      x.strokeStyle = `rgba(${95 + R() * 40},6,8,${(.5 + R() * .35) * k})`; x.lineWidth = .9 + R() * .7;
+      x.beginPath(); x.ellipse((R() - .5) * 1.5, r * .15, r * .78, r, 0, 0, Math.PI * 2); x.stroke();
+    }
+    x.restore();
+    x.save(); x.fillStyle = `rgba(110,6,8,${.5 * k})`; // 튄 핏방울
+    for (let i = 0; i < 3; i++) { x.beginPath(); x.arc(cx + (R() - .5) * 50, cy + (R() - .5) * 50, .8 + R() * 1.8, 0, Math.PI * 2); x.fill(); }
+    x.restore();
+  }
+  function paint() {
+    [[1, 1.25], [4, 1], [0, .9], [9, 1], [1, .7], [5, .95]].forEach(([d, k]) => { const [cx, cy] = key(d); print(cx + (R() - .5) * 18, cy + (R() - .5) * 16, (R() - .5) * .8, k); });
+    const [sx, sy] = key(0); x.save(); x.strokeStyle = 'rgba(100,6,8,.35)'; x.lineWidth = 6; x.lineCap = 'round'; // 0에서 아래로 끌린 자국
+    x.beginPath(); x.moveTo(sx + 4, sy + 14); x.quadraticCurveTo(sx + 12, sy + 50, sx + 3, sy + 80); x.stroke(); x.restore();
+  }
+  paint();
+  // 손가락 위치 → 캔버스 좌표
+  const pos = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height]; };
+  let last = null, moved = 0;
+  function smear(ax, ay, bx, by) { // 이전 자리의 피를 끌고 와 바르고, 원래 자리는 조금 닦임
+    const s = 26; x.save(); x.beginPath(); x.arc(bx, by, s / 2, 0, Math.PI * 2); x.clip(); x.globalAlpha = .55; x.filter = 'blur(1.5px)';
+    x.drawImage(cv, (ax - s / 2) * 2, (ay - s / 2) * 2, s * 2, s * 2, bx - s / 2, by - s / 2, s, s); x.restore();
+    x.save(); x.globalCompositeOperation = 'destination-out';
+    const g = x.createRadialGradient(ax, ay, 0, ax, ay, 16); g.addColorStop(0, 'rgba(0,0,0,.35)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = g; x.fillRect(ax - 16, ay - 16, 32, 32); x.restore();
+  }
+  function dab(px, py) { // 탭: 몇 프레임에 걸쳐 바깥으로 번지며 옅어짐
+    let f = 0; const s = 34;
+    (function step() {
+      const g = s + f * 3; x.save(); x.beginPath(); x.arc(px, py, g / 2, 0, Math.PI * 2); x.clip(); x.globalAlpha = .22; x.filter = `blur(${1 + f}px)`;
+      x.drawImage(cv, (px - s / 2) * 2, (py - s / 2) * 2, s * 2, s * 2, px - g / 2, py - g / 2, g, g); x.restore();
+      x.save(); x.globalCompositeOperation = 'destination-out'; const e = x.createRadialGradient(px, py, 0, px, py, 14);
+      e.addColorStop(0, 'rgba(0,0,0,.12)'); e.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = e; x.fillRect(px - 14, py - 14, 28, 28); x.restore();
+      if (++f < 8) requestAnimationFrame(step);
+    })();
+  }
+  screen.addEventListener('pointerdown', (e) => { last = pos(e); moved = 0; }, true);
+  screen.addEventListener('pointermove', (e) => {
+    if (!last || (e.pointerType === 'mouse' && !e.buttons)) return;
+    const p = pos(e), d = Math.hypot(p[0] - last[0], p[1] - last[1]); if (d < 3) return;
+    for (let t = 6; t <= d; t += 6) { const a = [last[0] + (p[0] - last[0]) * (t - 6) / d, last[1] + (p[1] - last[1]) * (t - 6) / d]; smear(a[0], a[1], last[0] + (p[0] - last[0]) * t / d, last[1] + (p[1] - last[1]) * t / d); }
+    moved += d; last = p;
+  }, true);
+  const up = (e) => { if (last && moved < 6) dab(...pos(e)); last = null; };
+  screen.addEventListener('pointerup', up, true); screen.addEventListener('pointercancel', () => { last = null; }, true);
+})();
+
 fetch('data.enc.json', { cache: 'no-store' }).then((r) => r.json()).then((j) => { ENC = j; show('lock'); });
