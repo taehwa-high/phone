@@ -557,7 +557,7 @@ function photosApp() {
     return;
   }
   if (st.tab === 'trash') {
-    app.innerHTML = `${back('컬렉션', { tab: 'col' })}<div class="scr"><h1 class="lg" style="padding-top:44px">최근 삭제</h1><div class="empty" style="padding:60px 40px 20px">항목 없음</div>
+    app.innerHTML = `${back('컬렉션', { tab: 'col' })}<div class="scr"><h1 class="lg">최근 삭제</h1><div class="empty" style="padding:60px 40px 20px">항목 없음</div>
       <div class="note">사진 및 비디오는 30일 동안 이곳에 보관된 후 영구적으로 삭제됩니다.</div></div>`;
     return;
   }
