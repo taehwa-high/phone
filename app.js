@@ -67,10 +67,11 @@ lock.onpointerup = (e) => {
   lock.style.transition = 'transform .25s,opacity .25s'; lock.style.transform = ''; lock.style.opacity = '';
   if (dy < -50 || Math.abs(dy) < 8) openPass(); // 위로 쓸거나 탭하면 열림, 아래로 끌면 제자리
 };
-/* ---- 시계: 8:00부터 실제로 흐름 ---- */
-const T0 = Date.now();
-const clock = () => { const m = 480 + Math.floor((Date.now() - T0) / 60000); const t = `${Math.floor(m / 60) % 12 || 12}:${String(m % 60).padStart(2, '0')}`; $('#sl').textContent = t; $('.lk-time').textContent = t; $('#poTime').textContent = t; };
-setInterval(clock, 5000);
+/* ---- 시계: 매일 밤 10:30(한국 시각)에 오전 8:30으로 초기화, 그 뒤 실제 시간만큼 흐름 (모든 방문자 같은 시각) ---- */
+const DAY = 864e5, KST = 9 * 36e5, RESET = 22.5 * 36e5;
+let AP = '오전';
+const clock = () => { const m = (510 + Math.floor(((Date.now() + KST - RESET) % DAY + DAY) % DAY / 60000)) % 1440; AP = m < 720 ? '오전' : '오후'; const t = `${Math.floor(m / 60) % 12 || 12}:${String(m % 60).padStart(2, '0')}`; $('#sl').textContent = t; $('.lk-time').textContent = t; $('#poTime').textContent = t; };
+setInterval(clock, 5000); clock();
 $('#hind').onclick = () => { if (!app.classList.contains('hidden')) closeApp(); else if (!lock.classList.contains('hidden')) openPass(); };
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !app.classList.contains('hidden')) return closeApp();
@@ -82,15 +83,25 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ---- 암호 ---- */
-// 실패 횟수·잠금 시각: 이미 3번 틀린 상태로 시작(잠금 화면 알림으로 표시), 5번부터 틀릴 때마다 1분 잠금. 새로고침으로 못 풀게 브라우저에 저장
-const ls = (k, v) => { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch { return null; } };
-let fails = +(ls('pwFails') ?? 3), until = +(ls('pwUntil') || 0);
+// 실패 횟수·잠금: 모든 방문자가 공유(Supabase phone_lock 표, 계산은 서버 함수라 기기 시계와 무관).
+// 기본 3회 실패에서 시작, 5회부터 틀릴 때마다 1분 잠금, 누가 암호를 맞히면 다시 3회로
+const SBL = SB.replace('phone_log', 'phone_lock'), SBS = SB.replace('phone_log', 'rpc/phone_lock_state');
+let fails = 3, until = 0, lockT;
 const lockedOut = () => Date.now() < until;
 function drawFails() {
   const lo = lockedOut(); pass.classList.toggle('out', lo);
   $('#lkNoti').classList.toggle('hidden', !fails); $('#lkNotiTxt').textContent = `암호를 ${fails}회 잘못 입력했습니다.`; // 아이폰처럼 잠금 화면 알림으로
+  clearTimeout(lockT); if (lo) lockT = setTimeout(drawFails, until - Date.now() + 50);
 }
-drawFails(); if (lockedOut()) setTimeout(drawFails, until - Date.now());
+async function pullLock() {
+  try {
+    const r = await (await fetch(SBS, { method: 'POST', headers: SBH, body: '{}', cache: 'no-store' })).json();
+    if (typeof r.fails !== 'number') return;
+    fails = r.fails; until = r.wait > 0 ? Date.now() + r.wait * 1000 : 0; drawFails();
+  } catch { /* 연결 안 되면 지금 상태 유지 */ }
+}
+const pushLock = (ok) => fetch(SBL, { method: 'POST', headers: SBH, body: JSON.stringify({ ok }) }).then(pullLock, () => {});
+drawFails(); pullLock(); setInterval(() => { if (!DATA) pullLock(); }, 3000);
 function openPass() {
   code = ''; drawDots(); show('pass');
   $('#pwPad').classList.toggle('hidden', !ENC.len); $('#pwText').classList.toggle('hidden', !!ENC.len);
@@ -113,12 +124,13 @@ async function attempt(c) {
   } catch {
     DATA = null;
   }
-  if (DATA) { fails = 0; ls('pwFails', 0); drawFails(); lastId = 0; await sync(); return goHome(); }
+  if (DATA) { pushLock(true); lastId = 0; await sync(); return goHome(); }
   {
     const d = $('#pwDots'); d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake');
     code = ''; setTimeout(drawDots, 450);
     if (!ENC.len) $('#pwText').value = '';
-    ls('pwFails', ++fails); if (fails >= 5) { until = Date.now() + 60000; ls('pwUntil', until); setTimeout(drawFails, 60000); }
+    if (++fails >= 5) until = Date.now() + 60000; // 서버 답 오기 전에 바로 반영
+    pushLock(false);
     setTimeout(drawFails, 450);
   }
 }
@@ -266,7 +278,7 @@ function camLoop() { const c = $('#vf'); if (!c || st.name !== 'cam') return; ca
 function shoot() {
   const c = document.createElement('canvas'); c.width = 302; c.height = 408;
   c.getContext('2d').drawImage($('#vf'), 0, 0, 302, 408);
-  const img = c.toDataURL('image/jpeg', .6), p = { img, taken: `2033년 10월 31일 오전 ${$('#sl').textContent}` };
+  const img = c.toDataURL('image/jpeg', .6), p = { img, taken: `2033년 10월 31일 ${AP} ${$('#sl').textContent}` };
   DATA.photos.push(p); $('.cm-bar .th').innerHTML = `<img src="${img}" alt="">`;
   post({ kind: 'photo', img, taken: p.taken }, p);
 }
@@ -317,7 +329,7 @@ app.onsubmit = (e) => {
   e.preventDefault(); const inp = e.target.querySelector('input'), text = inp.value.trim(); if (!text) return;
   if (st.i === -1) { DATA.threads.unshift({ name: st.nn, list: '', msgs: [] }); st.i = 0; }
   const t = DATA.threads[st.i], now = $('#sl').textContent;
-  const m = { from: 'me', day: '오늘', text, time: `오전 ${now}` }; t.msgs.push(m); t.list = `오전 ${now}`;
+  const m = { from: 'me', day: '오늘', text, time: `${AP} ${now}` }; t.msgs.push(m); t.list = `${AP} ${now}`;
   sendFail(m); render(); post({ kind: 'msg', thread: t.name, body: text.slice(0, 500), taken: m.time }, m); $('.compose input').focus();
 };
 let callT;
@@ -394,7 +406,7 @@ function stubApp() {
   } else if (st.kind === 'clock') {
     const body = st.tab === 'alarm'
       ? `<h1 class="lg">알람</h1><div class="list">${(DATA.alarms || []).map((a) => `<div class="row al${a.on ? '' : ' off'}"><div class="rb"><div class="wc"><small>${a.ap}</small>${a.t}</div><small>${esc(a.label)}, ${a.rep}</small></div><i class="sw${a.on ? ' on' : ''}"></i></div>`).join('')}</div>`
-      : `<h1 class="lg">세계 시계</h1><div class="list"><div class="row"><div class="rb"><small>오늘, +0시간</small><b style="font-size:22px;font-weight:400">서울</b></div><div class="wc">${$('#sl').textContent}<small>오전</small></div></div></div>`;
+      : `<h1 class="lg">세계 시계</h1><div class="list"><div class="row"><div class="rb"><small>오늘, +0시간</small><b style="font-size:22px;font-weight:400">서울</b></div><div class="wc">${$('#sl').textContent}<small>${AP}</small></div></div></div>`;
     app.innerHTML = `<div class="scr">${body}</div>${tabbar([['world', '세계 시계', 'globe'], ['alarm', '알람', 'clock']], st.tab === 'alarm' ? 'alarm' : 'world')}`;
   } else if (st.kind === 'notes') {
     app.innerHTML = `<div class="scr"><h1 class="lg">메모</h1><div class="empty">메모 없음</div></div>`;
