@@ -231,6 +231,8 @@ canvas.vf.snap{animation:snapc .3s}@keyframes snapc{0%{filter:brightness(5)}}
 .offline svg{width:64px;height:64px;border-radius:15px;margin-bottom:10px;opacity:.85}
 .offline b{font-size:18px}.offline small{font-size:14px;color:var(--gray);line-height:1.5}
 .offline button{margin-top:14px;padding:10px 22px;border-radius:20px;background:#e9e9ee;color:var(--blue);font-size:15px;font-weight:600}
+.al .wc{font-size:48px;gap:2px}.al.off .rb{opacity:.45}
+.sw{flex:none;width:51px;height:31px;border-radius:16px;background:#e5e5ea;position:relative;transition:background .2s}.sw::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2)}.sw.on{background:#34c759}.sw.on::after{left:22px}
 .wc{font-size:44px;font-weight:300;display:flex;align-items:baseline;gap:4px}.wc small{font-size:18px}
 .si{width:30px;height:30px;border-radius:8px;flex:none}
 

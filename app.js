@@ -394,7 +394,10 @@ function stubApp() {
   if (st.kind === 'net') {
     app.innerHTML = `<div class="offline">${icon(st.k)}<b>인터넷에 연결되어 있지 않습니다</b><small>셀룰러 데이터 또는 Wi‑Fi에 연결한 후<br>다시 시도해 주세요.</small><button ${g({ splash: true })}>다시 시도</button></div>`;
   } else if (st.kind === 'clock') {
-    app.innerHTML = `<div class="scr"><h1 class="lg">세계 시계</h1><div class="list"><div class="row"><div class="rb"><small>오늘, +0시간</small><b style="font-size:22px;font-weight:400">서울</b></div><div class="wc">${$('#sl').textContent}<small>오전</small></div></div></div></div>`;
+    const body = st.tab === 'alarm'
+      ? `<h1 class="lg">알람</h1><div class="list">${(DATA.alarms || []).map((a) => `<div class="row al${a.on ? '' : ' off'}"><div class="rb"><div class="wc"><small>${a.ap}</small>${a.t}</div><small>${esc(a.label)}, ${a.rep}</small></div><i class="sw${a.on ? ' on' : ''}"></i></div>`).join('')}</div>`
+      : `<h1 class="lg">세계 시계</h1><div class="list"><div class="row"><div class="rb"><small>오늘, +0시간</small><b style="font-size:22px;font-weight:400">서울</b></div><div class="wc">${$('#sl').textContent}<small>오전</small></div></div></div>`;
+    app.innerHTML = `<div class="scr">${body}</div>${tabbar([['world', '세계 시계', 'globe'], ['alarm', '알람', 'clock']], st.tab === 'alarm' ? 'alarm' : 'world')}`;
   } else if (st.kind === 'notes') {
     app.innerHTML = `<div class="scr"><h1 class="lg">메모</h1><div class="empty">메모 없음</div></div>`;
   } else {
@@ -409,6 +412,7 @@ function stubApp() {
 /* ---- 전화 ---- */
 const SVG = {
   star: 'M12 2l3 6.500 7 .8-5.200 4.800 1.500 7L12 17.500 5.700 21l1.500-7L2 9.300l7-.8z',
+  globe: 'M12 2a10 10 0 100 20 10 10 0 000-20zm0 2c.8 1.2 1.5 2.5 1.9 4h-3.8c.4-1.5 1.1-2.8 1.9-4zM4.3 14a8 8 0 010-4h3.4a16 16 0 000 4zm.8 2h3a15 15 0 001.4 3.9A8 8 0 015.1 16zm3-8h-3a8 8 0 014.4-3.9A15 15 0 008.1 8zM12 20c-.8-1.2-1.5-2.5-1.9-4h3.8c-.4 1.5-1.1 2.8-1.9 4zm2.3-6H9.7a14 14 0 010-4h4.6a14 14 0 010 4zm.3 5.9a15 15 0 001.4-3.9h3a8 8 0 01-4.4 3.9zm1.8-5.9a16 16 0 000-4h3.4a8 8 0 010 4zm-.4-6a15 15 0 00-1.4-3.9A8 8 0 0118.9 8z',
   clock: 'M12 3a9 9 0 100 18 9 9 0 000-18zm1 4v5.200l4 2.300-.8 1.300L11 13V7z',
   person: 'M12 12a4.500 4.500 0 100-9 4.500 4.500 0 000 9zm0 2c-4.400 0-8 2.200-8 5v2h16v-2c0-2.800-3.600-5-8-5z',
   keypad: 'M6 3a2 2 0 100 4 2 2 0 000-4zm6 0a2 2 0 100 4 2 2 0 000-4zm6 0a2 2 0 100 4 2 2 0 000-4zM6 9.500a2 2 0 100 4 2 2 0 000-4zm6 0a2 2 0 100 4 2 2 0 000-4zm6 0a2 2 0 100 4 2 2 0 000-4zM6 16a2 2 0 100 4 2 2 0 000-4zm6 0a2 2 0 100 4 2 2 0 000-4zm6 0a2 2 0 100 4 2 2 0 000-4z',
