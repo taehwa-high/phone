@@ -23,6 +23,9 @@ function show(name) {
 /* ---- 공유 기록: 보낸 문자·찍은 사진이 모든 사람 폰에 남음 (Supabase phone_log 표) ---- */
 const SB = 'https://uqxsqolcidnypqnxmcwo.supabase.co/rest/v1/phone_log', SBH = { apikey: 'sb_publishable_AxXOh5W_XIvEu6QjUbQyOQ_Ph4FLcse', 'Content-Type': 'application/json' };
 let lastId = 0, posting = 0;
+// 방문자가 건 전화(통화 실패) 기록: 매일 밤 10:30(한국) 이후 것만 보임
+const SBC = SB.replace('phone_log', 'phone_call'), resetISO = () => new Date(Date.now() - ((Date.now() + KST - RESET) % DAY + DAY) % DAY).toISOString();
+const TODAY = '2033년 10월 31일 월요일', callRow = (r) => ({ name: r.name, dir: 'fail', day: TODAY, time: r.taken, list: r.taken, id: r.id });
 function addRow(r) {
   if (DATA.photos.some((p) => p.id === r.id) || DATA.threads.some((t) => t.msgs.some((m) => m.id === r.id))) return;
   if (r.kind === 'photo') return DATA.photos.push({ img: r.img, taken: r.taken, id: r.id });
@@ -33,29 +36,36 @@ function addRow(r) {
 async function sync() {
   if (!DATA || posting) return;
   try {
-    const [rows, alive] = await Promise.all([`${SB}?id=gt.${lastId}&order=id`, `${SB}?kind=eq.photo&select=id`].map(async (u) => (await fetch(u, { headers: SBH, cache: 'no-store' })).json()));
+    const [rows, alive, calls] = await Promise.all([`${SB}?id=gt.${lastId}&order=id`, `${SB}?kind=eq.photo&select=id`, `${SBC}?created_at=gte.${resetISO()}&order=id.desc&select=id,name,taken`].map(async (u) => (await fetch(u, { headers: SBH, cache: 'no-store' })).json()));
     if (!DATA || posting || !Array.isArray(rows) || !Array.isArray(alive)) return;
     // 다른 사람이 지운 사진은 내 폰에서도 사라짐 (원래 있던 사진은 id가 없어 그대로)
     const ids = new Set(alive.map((r) => r.id)), before = DATA.photos.length;
     DATA.photos = DATA.photos.filter((p) => !p.id || ids.has(p.id));
     const gone = DATA.photos.length !== before;
     if (gone && st.name === 'photos') st.v = null;
+    if (Array.isArray(calls) && calls.map((r) => r.id).join() !== DATA.calls.filter((c) => c.id).map((c) => c.id).join()) {
+      DATA.calls = [...calls.map(callRow), ...DATA.calls.filter((c) => !c.id)];
+      if (st.name === 'phone' && !st.calling) render();
+    }
     if (!rows.length && !gone) return;
     rows.forEach(addRow); if (rows.length) lastId = rows[rows.length - 1].id;
     if (st.name === 'msg' || st.name === 'photos') { const sc = $('.tscroll'), y = sc && sc.scrollTop, inp = $('.compose input'), v = inp && inp.value; render(); if (inp) { $('.compose input').value = v; } if (sc && $('.tscroll')) $('.tscroll').scrollTop = $('.tscroll').scrollHeight; }
   } catch { /* 연결 안 되면 다음 확인 때 다시 */ }
 }
 setInterval(sync, 4000);
-async function post(row, local) {
+async function post(row, local, url = SB) {
   posting++;
   try {
-    const [r] = await (await fetch(SB, { method: 'POST', headers: { ...SBH, Prefer: 'return=representation' }, body: JSON.stringify(row) })).json();
+    const [r] = await (await fetch(url, { method: 'POST', headers: { ...SBH, Prefer: 'return=representation' }, body: JSON.stringify(row) })).json();
     local.id = r.id;
     // 내가 올린 것 앞에 남이 올린 게 있으면 놓치지 않게 lastId는 sync가 올림
   } catch { /* 저장 실패해도 내 화면엔 남음 */ }
   posting--;
 }
 function relock() { lastId = 0; unlocked.clear(); stopPlay(); DATA = null; app.innerHTML = ''; code = ''; show('lock'); }
+// 사용 불가 화면 '암호를 잊어버렸습니까?' → 힌트 창
+$('#poForgot').onclick = () => $('#poAlert').classList.remove('hidden');
+$('#poOk').onclick = () => $('#poAlert').classList.add('hidden');
 // 측면 버튼: 화면 끄기(잠금)/켜기. 1분 잠금 중이면 켜도 '사용할 수 없음' 화면
 $('#power').onclick = () => {
   const ph = $('#phone');
@@ -339,6 +349,7 @@ app.onsubmit = (e) => {
   sendFail(m); render(); post({ kind: 'msg', thread: t.name, body: text.slice(0, 500), taken: m.time }, m); $('.compose input').focus();
 };
 let callT;
+function logCall(n) { const t = `${AP} ${$('#sl').textContent}`, c = { name: n, dir: 'fail', day: TODAY, time: t, list: t }; DATA.calls.unshift(c); post({ name: n, taken: t }, c, SBC); }
 const g = (o) => `data-go='${JSON.stringify(o)}'`;
 const back = (label, o) => `<div class="nav"><button class="back" ${g(o)}><svg width="12" height="20" viewBox="0 0 12 20"><path d="M10 2L2 10l8 8" stroke="#0a84ff" stroke-width="2.600" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>${label}</button></div>`;
 const avatar = (n) => `<div class="av">${esc(n.trim()[0])}</div>`;
@@ -457,12 +468,12 @@ function phoneApp() {
       <div class="cbtns">${fail ? `<button ${g({ calling: null, cs: null })}><i>✕</i>취소</button><button ${g({ cs: null, calling: st.calling })}><i class="g">${sv('call')}</i>다시 걸기</button>`
         : `<button ${g({ calling: null })}><i class="r">${sv('call')}</i>종료</button>`}</div></div>`;
     clearTimeout(callT);
-    if (!fail) callT = setTimeout(() => { if (st.calling) go({ cs: 'fail' }); }, 2200);
+    if (!fail) callT = setTimeout(() => { if (st.calling) { logCall(st.calling); go({ cs: 'fail' }); } }, 2200);
     return;
   }
   clearTimeout(callT);
   const acts = (n) => `<div class="acts"><button data-do="msg" data-n="${esc(n)}">${sv('msg')}메시지</button><button ${g({ calling: n })}>${sv('call')}통화</button><button ${g({ calling: n })}>${sv('video')}비디오</button><button class="off">${sv('mail')}메일</button></div>`;
-  const dirTxt = (c) => c.dir === 'out' ? '발신 전화' : c.dir === 'miss' ? '부재중 전화' : '수신 전화';
+  const dirTxt = (c) => ({ out: '발신 전화', miss: '부재중 전화', noans: '발신 부재중', fail: '통화 실패' })[c.dir] || '수신 전화';
   if (st.c != null) {
     const mine = DATA.calls.filter((c) => c.name === st.c);
     app.innerHTML = `${back('연락처', { c: null })}<div class="scr"><div class="cd">${avatar(st.c)}<h2>${esc(st.c)}</h2></div>${acts(st.c)}
@@ -479,7 +490,7 @@ function phoneApp() {
   }
   if (st.tab === 'recent') {
     body = `<h1 class="lg">최근 기록</h1><div class="seg"><button class="${st.f ? '' : 'on'}" ${g({ f: 0 })}>전체</button><button class="${st.f ? 'on' : ''}" ${g({ f: 1 })}>부재중</button></div><div class="list">${DATA.calls.map((c, i) => c.dir === 'miss' || !st.f ? `
-      <button class="row" ${g({ i })}><div class="rb"><b${c.dir === 'miss' ? ' style="color:#ff3b30"' : ''}>${esc(c.name)}</b><small>${c.dir === 'out' ? outArrow : ''}휴대전화</small></div><div class="rt">${esc(c.list)}<span class="info">i</span></div></button>` : '').join('')}</div>`;
+      <button class="row" ${g({ i })}><div class="rb"><b${c.dir === 'miss' || c.dir === 'noans' ? ' style="color:#ff3b30"' : ''}>${esc(c.name)}</b><small>${c.dir === 'miss' || c.dir === 'in' ? '' : outArrow}${c.dir === 'fail' ? '통화 실패' : '휴대전화'}</small></div><div class="rt">${esc(c.list)}<span class="info">i</span></div></button>` : '').join('')}</div>`;
   } else if (st.tab === 'contacts') {
     body = `<h1 class="lg">연락처</h1><div class="list">${sorted.map((n) => `<button class="row" ${g({ c: n })}>${avatar(n)}<div class="rb"><b>${esc(n)}</b></div></button>`).join('')}</div>`;
   } else if (st.tab === 'keypad') {

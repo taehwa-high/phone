@@ -57,6 +57,10 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;paddin
 .po-time{position:absolute;top:112px;width:100%;font-size:100px;font-weight:700;letter-spacing:-2px;line-height:1.1;opacity:.15}
 .po-msg{position:absolute;top:46%;left:0;right:0;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:8px}
 .po-msg b{font-size:30px;font-weight:500;line-height:1.3}.po-msg span{font-size:18px}.po-msg small{font-size:16px;opacity:.45;margin-top:6px}
+.po-alert{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:270px;border-radius:14px;background:rgba(45,45,50,.92);backdrop-filter:blur(30px);overflow:hidden;z-index:2}
+.po-alert div{padding:18px 16px 16px}.po-alert b{display:block;font-size:17px;font-weight:600}.po-alert p{margin-top:4px;font-size:14px}
+.po-alert button{display:block;width:100%;height:44px;border-top:.5px solid rgba(255,255,255,.2);color:#0a84ff;font-size:17px;font-weight:600}
+.po-foot button{color:#fff;font-size:17px}
 .po-foot{position:absolute;bottom:56px;left:28px;right:28px;display:flex;justify-content:space-between;font-size:17px}
 .pw-dots.shake{animation:shake .45s}
 @keyframes shake{20%,60%{transform:translateX(-12px)}40%,80%{transform:translateX(12px)}}
