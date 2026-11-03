@@ -56,7 +56,12 @@ async function post(row, local) {
   posting--;
 }
 function relock() { lastId = 0; unlocked.clear(); stopPlay(); DATA = null; app.innerHTML = ''; code = ''; show('lock'); }
-$('#power').onclick = relock;
+// 측면 버튼: 화면 끄기(잠금)/켜기. 1분 잠금 중이면 켜도 '사용할 수 없음' 화면
+$('#power').onclick = () => {
+  const ph = $('#phone');
+  if (!ph.classList.contains('off')) { relock(); ph.classList.add('off'); return; }
+  ph.classList.remove('off'); if (lockedOut()) openPass();
+};
 
 /* ---- 잠금 화면: 탭 또는 위로 쓸기 ---- */
 let y0 = null;
