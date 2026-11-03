@@ -69,7 +69,7 @@ lock.onpointerup = (e) => {
 };
 /* ---- 시계: 8:00부터 실제로 흐름 ---- */
 const T0 = Date.now();
-const clock = () => { const m = 480 + Math.floor((Date.now() - T0) / 60000); const t = `${Math.floor(m / 60) % 12 || 12}:${String(m % 60).padStart(2, '0')}`; $('#sl').textContent = t; $('.lk-time').textContent = t; };
+const clock = () => { const m = 480 + Math.floor((Date.now() - T0) / 60000); const t = `${Math.floor(m / 60) % 12 || 12}:${String(m % 60).padStart(2, '0')}`; $('#sl').textContent = t; $('.lk-time').textContent = t; $('#poTime').textContent = t; };
 setInterval(clock, 5000);
 $('#hind').onclick = () => { if (!app.classList.contains('hidden')) closeApp(); else if (!lock.classList.contains('hidden')) openPass(); };
 document.addEventListener('keydown', (e) => {
@@ -88,8 +88,6 @@ let fails = +(ls('pwFails') ?? 3), until = +(ls('pwUntil') || 0);
 const lockedOut = () => Date.now() < until;
 function drawFails() {
   const lo = lockedOut(); pass.classList.toggle('out', lo);
-  $('#pwTitle').textContent = lo ? '휴대폰 사용 불가' : '암호 입력';
-  $('#pwFail').textContent = lo ? '1분 후에 다시 시도하십시오' : '';
   $('#lkNoti').classList.toggle('hidden', !fails); $('#lkNotiTxt').textContent = `암호를 ${fails}회 잘못 입력했습니다.`; // 아이폰처럼 잠금 화면 알림으로
 }
 drawFails(); if (lockedOut()) setTimeout(drawFails, until - Date.now());
