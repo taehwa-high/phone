@@ -82,14 +82,15 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ---- 암호 ---- */
-// 실패 횟수·잠금 시각: 이미 3번 틀린 상태로 시작, 5번부터 틀릴 때마다 1분 잠금. 새로고침으로 못 풀게 브라우저에 저장
+// 실패 횟수·잠금 시각: 이미 3번 틀린 상태로 시작(잠금 화면 알림으로 표시), 5번부터 틀릴 때마다 1분 잠금. 새로고침으로 못 풀게 브라우저에 저장
 const ls = (k, v) => { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch { return null; } };
 let fails = +(ls('pwFails') ?? 3), until = +(ls('pwUntil') || 0);
 const lockedOut = () => Date.now() < until;
 function drawFails() {
   const lo = lockedOut(); pass.classList.toggle('out', lo);
   $('#pwTitle').textContent = lo ? '휴대폰 사용 불가' : '암호 입력';
-  $('#pwFail').textContent = lo ? '1분 후에 다시 시도하십시오' : fails ? `실패한 시도 ${fails}회` : '';
+  $('#pwFail').textContent = lo ? '1분 후에 다시 시도하십시오' : '';
+  $('#lkNoti').classList.toggle('hidden', !fails); $('#lkNotiTxt').textContent = `암호를 ${fails}회 잘못 입력했습니다.`; // 아이폰처럼 잠금 화면 알림으로
 }
 drawFails(); if (lockedOut()) setTimeout(drawFails, until - Date.now());
 function openPass() {
