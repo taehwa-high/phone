@@ -84,12 +84,13 @@ document.addEventListener('keydown', (e) => {
 
 /* ---- 암호 ---- */
 // 실패 횟수·잠금: 모든 방문자가 공유(Supabase phone_lock 표, 계산은 서버 함수라 기기 시계와 무관).
-// 기본 3회 실패에서 시작, 5회부터 틀릴 때마다 1분 잠금, 누가 암호를 맞히면 다시 3회로
+// 매일 밤 10:30에 3회 실패 상태로 초기화, 5회 틀리면 1분 잠금 후 0회로, 누가 암호를 맞혀도 0회로
 const SBL = SB.replace('phone_log', 'phone_lock'), SBS = SB.replace('phone_log', 'rpc/phone_lock_state');
 let fails = 3, until = 0, lockT;
 const lockedOut = () => Date.now() < until;
 function drawFails() {
   const lo = lockedOut(); pass.classList.toggle('out', lo);
+  if (!lo && fails >= 5) fails = 0; // 잠금 1분 끝나면 실패 기록 없이 0회부터
   $('#lkNoti').classList.toggle('hidden', !fails); $('#lkNotiTxt').textContent = `암호를 ${fails}회 잘못 입력했습니다.`; // 아이폰처럼 잠금 화면 알림으로
   clearTimeout(lockT); if (lo) lockT = setTimeout(drawFails, until - Date.now() + 50);
 }
