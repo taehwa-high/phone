@@ -527,7 +527,7 @@ function calApp() {
 }
 
 /* ---- 시작 ---- */
-/* ---- 액정 위 피 묻은 지문: 암호 숫자(1·4·0·9·5) 자리. 쓸면 번지며 닦이고, 탭하면 번짐 ---- */
+/* ---- 액정 위 피 묻은 지문: 암호 숫자(1·4·0·9·5) 자리 + 헷갈리게 6·7. 쓸면 번지며 닦이고, 탭하면 번짐 ---- */
 (() => {
   const W = 402, H = 874, cv = document.createElement('canvas'); cv.id = 'glass'; cv.width = W * 2; cv.height = H * 2;
   screen.appendChild(cv);
@@ -551,7 +551,7 @@ function calApp() {
     x.restore();
   }
   function paint() {
-    [[1, 1.25], [4, 1], [0, .9], [9, 1], [1, .7], [5, .95]].forEach(([d, k]) => { const [cx, cy] = key(d); print(cx + (R() - .5) * 18, cy + (R() - .5) * 16, (R() - .5) * .8, k); });
+    [[1, 1.25], [4, 1], [0, .9], [9, 1], [1, .7], [5, .95], [6, .8], [7, .85]].forEach(([d, k]) => { const [cx, cy] = key(d); print(cx + (R() - .5) * 18, cy + (R() - .5) * 16, (R() - .5) * .8, k); });
     const [sx, sy] = key(0); x.save(); x.strokeStyle = 'rgba(100,6,8,.35)'; x.lineWidth = 6; x.lineCap = 'round'; // 0에서 아래로 끌린 자국
     x.beginPath(); x.moveTo(sx + 4, sy + 14); x.quadraticCurveTo(sx + 12, sy + 50, sx + 3, sy + 80); x.stroke(); x.restore();
   }
