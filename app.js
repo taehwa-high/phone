@@ -62,7 +62,7 @@ async function post(row, local, url = SB) {
   } catch { /* 저장 실패해도 내 화면엔 남음 */ }
   posting--;
 }
-function relock() { leaveOpen(); lastId = 0; unlocked.clear(); stopPlay(); DATA = null; app.innerHTML = ''; code = ''; show('lock'); }
+function relock() { lastId = 0; unlocked.clear(); stopPlay(); DATA = null; app.innerHTML = ''; code = ''; show('lock'); }
 // 사용 불가 화면 '암호를 잊어버렸습니까?' → 힌트 창
 $('#poForgot').onclick = () => $('#poAlert').classList.remove('hidden');
 $('#poOk').onclick = () => $('#poAlert').classList.add('hidden');
@@ -117,17 +117,8 @@ async function pullLock() {
   } catch { /* 연결 안 되면 지금 상태 유지 */ }
 }
 const pushLock = (ok) => fetch(SBL, { method: 'POST', headers: SBH, body: JSON.stringify({ ok }) }).then(pullLock, () => {});
-// 공유 열림: 누가 풀고 머무는 동안은 뒤에 온 사람도 암호 없이 열림. 모두 떠나면(25초간 신호 없음) 다시 잠김
-const RPC = (fn, body, keepalive) => fetch(SB.replace('phone_log', 'rpc/' + fn), { method: 'POST', headers: SBH, body: JSON.stringify(body || {}), cache: 'no-store', keepalive: !!keepalive });
-const SID = Math.random().toString(36).slice(2) + Date.now().toString(36);
-let openCode = null, myCode = null;
-async function pullOpen() { try { const c = await (await RPC('phone_open_code')).json(); openCode = typeof c === 'string' ? c : null; } catch { /* 연결 안 되면 잠긴 걸로 */ } }
-const ping = () => { if (DATA && myCode) RPC('phone_open_ping', { p_sid: SID, p_code: myCode }).catch(() => {}); };
-function leaveOpen() { if (myCode) RPC('phone_open_leave', { p_sid: SID }, true).catch(() => {}); myCode = null; openCode = null; }
-setInterval(ping, 8000); addEventListener('pagehide', leaveOpen);
-drawFails(); pullLock(); setInterval(() => { if (!DATA) { pullLock(); pullOpen(); } }, 3000);
+drawFails(); pullLock(); setInterval(() => { if (!DATA) pullLock(); }, 3000);
 function openPass() {
-  if (openCode) return attempt(openCode, true); // 누가 이미 풀어 둔 상태
   code = ''; drawDots(); show('pass');
   $('#pwPad').classList.toggle('hidden', !ENC.len); $('#pwText').classList.toggle('hidden', !!ENC.len);
   if (!ENC.len) { $('#pwText').value = ''; $('#pwText').focus(); }
@@ -139,8 +130,8 @@ function drawDots() {
 function press(d) { if (lockedOut() || code.length >= ENC.len) return; code += d; drawDots(); if (code.length === ENC.len) attempt(code); }
 function del() { code = code.slice(0, -1); drawDots(); }
 $('#pwCancel').onclick = () => (code ? del() : show('lock'));
-async function attempt(c, auto) {
-  if (lockedOut() && !auto) return;
+async function attempt(c) {
+  if (lockedOut()) return;
   try {
     const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(c), 'PBKDF2', false, ['deriveKey']);
     const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64(ENC.salt), iterations: ENC.iter, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
@@ -149,8 +140,7 @@ async function attempt(c, auto) {
   } catch {
     DATA = null;
   }
-  if (DATA) { if (!auto) pushLock(true); myCode = c; ping(); lastId = 0; await sync(); return goHome(); }
-  if (auto) { openCode = null; return; } // 공유 암호가 안 맞으면(암호 바뀜 등) 그냥 잠금 화면
+  if (DATA) { pushLock(true); lastId = 0; await sync(); return goHome(); }
   {
     const d = $('#pwDots'); d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake');
     code = ''; setTimeout(drawDots, 450);
@@ -582,4 +572,4 @@ function calApp() {
 }
 
 /* ---- 시작 ---- */
-fetch('data.enc.json', { cache: 'no-store' }).then((r) => r.json()).then(async (j) => { ENC = j; show('lock'); await pullOpen(); if (openCode && !DATA) attempt(openCode, true); });
+fetch('data.enc.json', { cache: 'no-store' }).then((r) => r.json()).then((j) => { ENC = j; show('lock'); });
