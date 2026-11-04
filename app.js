@@ -508,7 +508,7 @@ function msgApp() {
     const t = st.i === -1 ? { name: st.nn, msgs: [] } : DATA.threads[st.i]; let last = '';
     const items = t.msgs.map((m) => {
       const dv = m.day !== last ? `<div class="dv">${esc(m.day)}</div>` : ''; last = m.day;
-      return `${dv}<div class="bw ${m.from}">${m.photo != null ? `<div class="bb pic"><img src="${DATA.photos[m.photo].img}" alt="사진"></div>` : `<div class="bb">${esc(m.text)}</div>`}${m.fail ? `<button class="fail" ${g({ sheet: t.msgs.indexOf(m) })} aria-label="전송되지 않음">!</button>` : m.sending ? '' : m.time ? `<time>${esc(m.time)}</time>` : ''}</div>${m.fail ? '<div class="failtxt">전송되지 않음</div>' : m.sending ? '<div class="sendtxt">전송 중…</div>' : ''}`;
+      return `${dv}<div class="bw ${m.from}">${m.photo != null ? `<div class="bb mpic"><img src="${DATA.photos[m.photo].img}" alt="사진"></div>` : `<div class="bb">${esc(m.text)}</div>`}${m.fail ? `<button class="fail" ${g({ sheet: t.msgs.indexOf(m) })} aria-label="전송되지 않음">!</button>` : m.sending ? '' : m.time ? `<time>${esc(m.time)}</time>` : ''}</div>${m.fail ? '<div class="failtxt">전송되지 않음</div>' : m.sending ? '<div class="sendtxt">전송 중…</div>' : ''}`;
     }).join('');
     app.innerHTML = `<div class="thread"><div class="nav"><button class="back" ${g({ i: null })}><svg width="12" height="20" viewBox="0 0 12 20"><path d="M10 2L2 10l8 8" stroke="#0a84ff" stroke-width="2.600" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
       <div class="tavatar">${avatar(t.name)}<small>${esc(t.name)}</small></div><div class="tscroll">${items}</div>
