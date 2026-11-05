@@ -22,13 +22,13 @@ function show(name) {
 }
 /* ---- 공유 기록: 보낸 문자·찍은 사진이 모든 사람 폰에 남음 (Supabase phone_log 표) ---- */
 const SB = 'https://uqxsqolcidnypqnxmcwo.supabase.co/rest/v1/phone_log', SBH = { apikey: 'sb_publishable_AxXOh5W_XIvEu6QjUbQyOQ_Ph4FLcse', 'Content-Type': 'application/json' };
-let lastId = 0, posting = 0;
+let lastId = 0, posting = 0, seen = []; // seen: 이미 받은 공유 기록(잠금 풀 때 다시 받지 않게)
 // 방문자가 건 전화(통화 실패) 기록: 매일 밤 10:30(한국) 이후 것만 보임
 const SBC = SB.replace('phone_log', 'phone_call'), resetISO = () => new Date(Date.now() - ((Date.now() + KST - RESET) % DAY + DAY) % DAY).toISOString();
 const TODAY = '2033년 10월 31일 월요일', callRow = (r) => ({ name: r.name, dir: 'fail', day: TODAY, time: r.taken, list: r.taken, id: r.id });
 function addRow(r) {
   if (DATA.photos.some((p) => p.id === r.id) || DATA.threads.some((t) => t.msgs.some((m) => m.id === r.id))) return;
-  if (r.kind === 'photo') return DATA.photos.push({ img: r.img, taken: r.taken, id: r.id });
+  if (r.kind === 'photo') return /^data:image\//.test(r.img) && DATA.photos.push({ img: r.img, taken: r.taken, id: r.id });
   let t = DATA.threads.find((x) => x.name === r.thread);
   if (!t) { t = { name: r.thread, list: '', msgs: [] }; DATA.threads.unshift(t); }
   t.msgs.push({ from: 'me', day: '오늘', text: r.body, time: r.taken, fail: 1, id: r.id }); t.list = r.taken;
@@ -48,7 +48,7 @@ async function sync() {
       if (st.name === 'phone' && !st.calling) render();
     }
     if (!rows.length && !gone) return;
-    rows.forEach(addRow); if (rows.length) lastId = rows[rows.length - 1].id;
+    seen.push(...rows); rows.forEach(addRow); if (rows.length) lastId = rows[rows.length - 1].id;
     if (st.name === 'msg' || st.name === 'photos') { const sc = $('.tscroll'), y = sc && sc.scrollTop, inp = $('.compose input'), v = inp && inp.value; render(); if (inp) { $('.compose input').value = v; } if (sc && $('.tscroll')) $('.tscroll').scrollTop = $('.tscroll').scrollHeight; }
   } catch { /* 연결 안 되면 다음 확인 때 다시 */ }
 }
@@ -62,7 +62,7 @@ async function post(row, local, url = SB) {
   } catch { /* 저장 실패해도 내 화면엔 남음 */ }
   posting--;
 }
-function relock() { lastId = 0; unlocked.clear(); stopPlay(); DATA = null; app.innerHTML = ''; code = ''; show('lock'); }
+function relock() { unlocked.clear(); stopPlay(); DATA = null; app.innerHTML = ''; code = ''; show('lock'); }
 // 사용 불가 화면 '암호를 잊어버렸습니까?' → 힌트 창
 $('#poForgot').onclick = () => $('#poAlert').classList.remove('hidden');
 $('#poOk').onclick = () => $('#poAlert').classList.add('hidden');
@@ -140,7 +140,7 @@ async function attempt(c) {
   } catch {
     DATA = null;
   }
-  if (DATA) { pushLock(true); lastId = 0; await sync(); return goHome(); }
+  if (DATA) { pushLock(true); seen.forEach(addRow); await sync(); return goHome(); }
   {
     const d = $('#pwDots'); d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake');
     code = ''; setTimeout(drawDots, 450);
@@ -257,7 +257,7 @@ function openCam() {
   app.innerHTML = `<canvas class="vf" id="vf" width="402" height="544"></canvas><div class="cm-top"><span>⚡︎</span><span>⌃</span><span>◎</span></div>
     <div class="cm-zoom">${['.5', '1×', '2'].map((z, i) => `<button data-cam="zoom" class="${i === 1 ? 'on' : ''}">${z}</button>`).join('')}</div>
     <div class="cm-modes">${['비디오', '사진', '인물 사진'].map((m) => `<button data-cam="mode" class="${m === '사진' ? 'on' : ''}">${m}</button>`).join('')}</div>
-    <div class="cm-bar"><button class="th" data-cam="th" aria-label="최근 사진">${DATA.photos.length ? `<img src="${DATA.photos[DATA.photos.length - 1].img}" alt="">` : ''}</button><button class="sh" data-cam="sh" aria-label="촬영"></button><button class="fl" data-cam="fl" aria-label="카메라 전환">⟲</button></div>`;
+    <div class="cm-bar"><button class="th" data-cam="th" aria-label="최근 사진">${DATA.photos.length ? `<img src="${esc(DATA.photos[DATA.photos.length - 1].img)}" alt="">` : ''}</button><button class="sh" data-cam="sh" aria-label="촬영"></button><button class="fl" data-cam="fl" aria-label="카메라 전환">⟲</button></div>`;
   camLoop();
 }
 /* 렌즈가 깨진 카메라: 흐릿한 빛 번짐 + 노이즈 + 가끔 화면 찢김 + 유리 금 */
@@ -508,7 +508,7 @@ function msgApp() {
     const t = st.i === -1 ? { name: st.nn, msgs: [] } : DATA.threads[st.i]; let last = '';
     const items = t.msgs.map((m) => {
       const dv = m.day !== last ? `<div class="dv">${esc(m.day)}</div>` : ''; last = m.day;
-      return `${dv}<div class="bw ${m.from}">${m.photo != null ? `<div class="bb mpic"><img src="${DATA.photos[m.photo].img}" alt="사진"></div>` : `<div class="bb">${esc(m.text)}</div>`}${m.fail ? `<button class="fail" ${g({ sheet: t.msgs.indexOf(m) })} aria-label="전송되지 않음">!</button>` : m.sending ? '' : m.time ? `<time>${esc(m.time)}</time>` : ''}</div>${m.fail ? '<div class="failtxt">전송되지 않음</div>' : m.sending ? '<div class="sendtxt">전송 중…</div>' : ''}`;
+      return `${dv}<div class="bw ${m.from}">${m.photo != null ? `<div class="bb mpic"><img src="${esc(DATA.photos[m.photo].img)}" alt="사진"></div>` : `<div class="bb">${esc(m.text)}</div>`}${m.fail ? `<button class="fail" ${g({ sheet: t.msgs.indexOf(m) })} aria-label="전송되지 않음">!</button>` : m.sending ? '' : m.time ? `<time>${esc(m.time)}</time>` : ''}</div>${m.fail ? '<div class="failtxt">전송되지 않음</div>' : m.sending ? '<div class="sendtxt">전송 중…</div>' : ''}`;
     }).join('');
     app.innerHTML = `<div class="thread"><div class="nav"><button class="back" ${g({ i: null })}><svg width="12" height="20" viewBox="0 0 12 20"><path d="M10 2L2 10l8 8" stroke="#0a84ff" stroke-width="2.600" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
       <div class="tavatar">${avatar(t.name)}<small>${esc(t.name)}</small></div><div class="tscroll">${items}</div>
@@ -526,7 +526,7 @@ function msgApp() {
 /* ---- 사진 ---- */
 function photosApp() {
   const tabs = [['lib', '보관함', 'photo'], ['col', '컬렉션', 'folder']];
-  const P = DATA.photos, img = (p) => `<img src="${p.img}">`;
+  const P = DATA.photos, img = (p) => `<img src="${esc(p.img)}">`;
   if (st.v != null) {
     app.innerHTML = `${back('보관함', { v: null })}<div class="viewer"><div class="vp" id="vp">${img(P[st.v])}</div><div class="vcap"><b>${esc(P[st.v].taken)}</b></div><div class="vbar"><span>${sv('photo')}</span><span class="vcnt">${P.length - st.v} / ${P.length}</span>${P[st.v].id ? `<button ${g({ sheet: 1 })} aria-label="삭제">${sv('trash')}</button>` : `<span class="off">${sv('trash')}</span>`}</div>
       ${st.sheet ? `<div class="sheet-bg" ${g({ sheet: null })}></div><div class="sheet"><div class="sh-box"><small>이 사진이 모든 기기에서 삭제됩니다.</small><button class="red" data-do="delphoto">사진 삭제</button></div><button class="sh-cancel" ${g({ sheet: null })}>취소</button></div>` : ''}</div>`;
